@@ -1,0 +1,98 @@
+# Sitio web del libro. Los capítulos viven en libro-btp/ y no se tocan:
+# este fichero solo define el orden, el tema y la búsqueda.
+site_name: SAP BTP y CAP desde cero
+site_description: Cuaderno de referencia sobre SAP BTP y CAP para un desarrollador backend
+site_url: https://biorubenfs.github.io/btp-training/
+repo_url: https://github.com/biorubenfs/btp-training
+repo_name: biorubenfs/btp-training
+edit_uri: edit/main/libro-btp/
+copyright: Escrito sobre una cuenta trial de SAP BTP
+
+docs_dir: libro-btp
+site_dir: site
+
+# Ficheros de libro-btp/ que no forman parte del sitio
+exclude_docs: |
+  build.sh
+  style.css
+  README.md
+
+theme:
+  name: material
+  language: es
+  font:
+    text: Source Sans 3
+    code: JetBrains Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Modo oscuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Modo claro
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+
+extra_css:
+  - web.css
+
+plugins:
+  - search:
+      lang: es
+
+markdown_extensions:
+  - toc:
+      permalink: "¶"
+      toc_depth: 3
+  - tables
+  - admonition
+  - attr_list
+  - smarty
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+
+nav:
+  - Inicio: index.md
+  - Prólogo: 00-prologo.md
+  - Parte I · Fundamentos:
+      - 1. La nube y SAP BTP: 01-la-nube-y-btp.md
+      - 2. Jerarquía de cuentas: 02-jerarquia-de-cuentas.md
+      - 3. Regiones, entitlements y cuotas: 03-regiones-entitlements-y-cuotas.md
+      - 4. Cloud Foundry: 04-cloud-foundry.md
+  - Parte II · Servicios:
+      - 5. Servicios, instancias y suscripciones: 05-servicios-instancias-y-suscripciones.md
+      - 6. Bindings y service keys: 06-bindings-y-service-keys.md
+      - 7. HANA Cloud y HDI: 07-hana-cloud-y-hdi.md
+      - 8. Seguridad, usuarios y roles: 08-seguridad-usuarios-y-roles.md
+      - 9. Destinations y conectividad: 09-destinations-y-conectividad.md
+  - Parte III · CAP en BTP:
+      - 10. Anatomía de un proyecto CAP: 10-anatomia-de-un-proyecto-cap.md
+      - 11. MTA y despliegue: 11-mta-y-despliegue.md
+      - 12. Modo híbrido y testing: 12-modo-hibrido-y-testing.md
+      - 13. Operar y diagnosticar: 13-operar-y-diagnosticar.md
+      - 14. De desarrollo a producción: 14-de-dev-a-prod.md
+  - Apéndices:
+      - A. CLI de Cloud Foundry: A1-apendice-cf-cli.md
+      - B. CLI de cds: A2-apendice-cds-cli.md
+      - C. CLI de btp: A3-apendice-btp-cli.md
+      - D. Recetario: A4-apendice-recetario.md
+      - E. Glosario: A5-apendice-glosario.md
+      - F. Diario: A6-apendice-diario.md

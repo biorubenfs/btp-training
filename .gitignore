@@ -1,0 +1,13 @@
+# Secretos
+credentials-dbadmin-hana
+key1.json
+
+# Generado
+salida/
+site/
+
+# Node (por si algún día hay un proyecto CAP dentro)
+node_modules/
+
+# PDF copiado dentro de libro-btp/ solo para que la web lo sirva (lo genera el workflow o build.sh)
+libro-btp/libro-btp.pdf

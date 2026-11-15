@@ -1,0 +1,61 @@
+# Publica el libro en GitHub Pages: sitio MkDocs + PDF descargable.
+# No requiere configuración previa: configure-pages activa Pages en el primer run.
+name: Publicar libro
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "libro-btp/**"
+      - "mkdocs.yml"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Activa GitHub Pages con origen "GitHub Actions" si aún no lo está
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar MkDocs Material y dependencias del PDF
+        run: pip install mkdocs-material markdown pygments
+
+      - name: Generar el PDF (build.sh con Chrome headless, ya presente en el runner)
+        run: |
+          libro-btp/build.sh "$RUNNER_TEMP/salida"
+          cp "$RUNNER_TEMP/salida/libro-btp.pdf" libro-btp/libro-btp.pdf
+
+      - name: Construir el sitio (incluye el PDF como fichero estático)
+        run: mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

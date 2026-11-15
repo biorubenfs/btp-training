@@ -1,0 +1,20 @@
+/* Ajustes solo para la versión web (MkDocs). El estilo de impresión está en style.css. */
+
+/* Los capítulos 1, 5, 10 y A1 empiezan con la portadilla de parte ("# Parte I. ...")
+   seguida del título del capítulo. En la web se muestra como antetítulo pequeño. */
+.md-content__inner > h1:first-of-type:has(+ h1) {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+  margin-bottom: 0;
+}
+.md-content__inner > h1:first-of-type:has(+ h1) + h1 {
+  margin-top: 0.2em;
+}
+
+/* Diagramas ASCII: sin ajuste de línea para que no se rompan */
+.md-typeset pre > code {
+  white-space: pre;
+}

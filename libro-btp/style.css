@@ -1,0 +1,46 @@
+/* Estilo de impresión para libro-btp */
+@page { size: A4; margin: 22mm 18mm 22mm 18mm; }
+:root { --ink: #1a1a1a; --muted: #555; --rule: #bbb; --box: #f4f4f4; --accent: #0a4f8a; }
+html { font-size: 10.5pt; }
+body { font-family: "Source Serif 4", "Noto Serif", Georgia, "Times New Roman", serif;
+       color: var(--ink); line-height: 1.45; max-width: 100%; margin: 0; }
+h1, h2, h3, h4 { font-family: "Source Sans 3", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+                 color: var(--ink); line-height: 1.2; page-break-after: avoid; }
+h1 { font-size: 24pt; margin: 0 0 14pt; padding-top: 6pt; page-break-before: always; border-bottom: 2px solid var(--accent); padding-bottom: 6pt; }
+h1.titulo, h1:first-of-type { page-break-before: auto; }
+h2 { font-size: 15pt; margin: 20pt 0 8pt; color: var(--accent); }
+h3 { font-size: 12pt; margin: 14pt 0 6pt; }
+p { margin: 0 0 8pt; orphans: 3; widows: 3; }
+ul, ol { margin: 0 0 8pt 0; padding-left: 20pt; }
+li { margin-bottom: 2pt; }
+blockquote { margin: 8pt 0; padding: 6pt 10pt; border-left: 3px solid var(--accent); background: var(--box);
+             page-break-inside: avoid; font-size: 10pt; }
+blockquote p { margin: 0 0 4pt; }
+code, pre { font-family: "JetBrains Mono", "DejaVu Sans Mono", "Liberation Mono", Menlo, monospace; }
+code { font-size: 9pt; background: var(--box); padding: 0 3px; border-radius: 2px; }
+pre { font-size: 8.4pt; line-height: 1.3; background: var(--box); border: 1px solid #ddd; padding: 7pt 9pt;
+      overflow-x: hidden; white-space: pre-wrap; word-break: break-word; page-break-inside: avoid; margin: 6pt 0 10pt; }
+pre code { background: none; padding: 0; font-size: inherit; }
+table { border-collapse: collapse; width: 100%; margin: 6pt 0 12pt; font-size: 9pt; page-break-inside: auto; }
+thead { display: table-header-group; }
+tr { page-break-inside: avoid; }
+th, td { border: 1px solid var(--rule); padding: 3pt 5pt; vertical-align: top; text-align: left; }
+th { background: #e9eef4; font-family: "Source Sans 3", "Noto Sans", Arial, sans-serif; }
+td code, th code { font-size: 8.5pt; white-space: nowrap; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 14pt 0; }
+a { color: var(--accent); text-decoration: none; }
+.portada { page-break-after: always; text-align: center; padding-top: 30%; }
+.portada h1 { border: 0; page-break-before: auto; font-size: 32pt; }
+.portada .sub { font-size: 16pt; color: var(--muted); font-family: "Source Sans 3", "Noto Sans", Arial, sans-serif; }
+.portada .meta { margin-top: 40pt; color: var(--muted); font-size: 11pt; }
+.toc { page-break-after: always; }
+.toc ul { list-style: none; padding-left: 0; }
+.toc ul ul { padding-left: 16pt; }
+.toc li { margin: 2pt 0; font-size: 10.5pt; }
+.toc > ul > li { margin-top: 6pt; font-weight: 600; }
+.toc > ul > li > ul > li { font-weight: 400; }
+.codehilite .k, .codehilite .nt { color: #0a4f8a; }
+.codehilite .s, .codehilite .s1, .codehilite .s2 { color: #7a3e00; }
+.codehilite .c, .codehilite .c1 { color: #6a737d; font-style: italic; }
+h1.parte { page-break-before: always; page-break-after: always; border: 0; text-align: center;
+           padding-top: 38%; font-size: 28pt; color: var(--accent); }

@@ -1,0 +1,760 @@
+<title>BTP Cockpit desde cero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F6F8FB;
+    --bg-2: #EDF1F6;
+    --ink: #182230;
+    --ink-2: #4A5867;
+    --ink-3: #7A8796;
+    --line: #D5DCE5;
+    --accent: #2B5C8F;
+    --accent-soft: #DCE7F3;
+    --cap: #A8661A;
+    --cap-soft: #F6E8D3;
+    --code-bg: #1E2733;
+    --code-ink: #E6ECF3;
+    --ok: #2E7D4F;
+    --warn: #B23A3A;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F1520;
+      --bg-2: #171F2C;
+      --ink: #E4EAF1;
+      --ink-2: #AFBAC7;
+      --ink-3: #7C899A;
+      --line: #2A3546;
+      --accent: #7FB0E6;
+      --accent-soft: #1B2D45;
+      --cap: #E0A55A;
+      --cap-soft: #3A2B16;
+      --code-bg: #0A0F17;
+      --code-ink: #DCE4EE;
+      --ok: #6FC08F;
+      --warn: #E07A7A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1520;
+    --bg-2: #171F2C;
+    --ink: #E4EAF1;
+    --ink-2: #AFBAC7;
+    --ink-3: #7C899A;
+    --line: #2A3546;
+    --accent: #7FB0E6;
+    --accent-soft: #1B2D45;
+    --cap: #E0A55A;
+    --cap-soft: #3A2B16;
+    --code-bg: #0A0F17;
+    --code-ink: #DCE4EE;
+    --ok: #6FC08F;
+    --warn: #E07A7A;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+  }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 48px;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 40px 24px 96px;
+  }
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    font-size: 14px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+  nav.toc .kicker { margin-bottom: 14px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
+  nav.toc li a {
+    display: block;
+    padding: 5px 0 5px 14px;
+    color: var(--ink-2);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+  }
+  nav.toc li a:hover { color: var(--ink); border-left-color: var(--accent); }
+  nav.toc li a b { color: var(--ink-3); font-weight: 500; font-family: "JetBrains Mono", monospace; font-size: 12px; margin-right: 6px; }
+
+  main { max-width: 68ch; min-width: 0; }
+
+  header.top { margin-bottom: 40px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+  .kicker {
+    font-family: "Archivo", system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    font-family: "Archivo", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(30px, 4vw, 42px);
+    line-height: 1.1;
+    margin: 10px 0 14px;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  header.top p.lede { font-size: 19px; color: var(--ink-2); margin: 0 0 18px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14px; color: var(--ink-3); }
+  .meta span b { color: var(--ink-2); font-weight: 600; }
+
+  section.mod { margin-top: 56px; }
+  section.mod > .modhead { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: baseline; margin-bottom: 8px; }
+  .modnum {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+  h2 {
+    font-family: "Archivo", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    line-height: 1.2;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .goal { color: var(--ink-2); font-style: italic; margin: 0 0 20px; }
+  h3 {
+    font-family: "Archivo", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin: 30px 0 8px;
+  }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 5px; }
+  li > ul { margin-top: 5px; }
+
+  .path {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    font-family: "Archivo", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+    vertical-align: baseline;
+  }
+  .path i { font-style: normal; color: var(--ink-3); }
+
+  code { font-family: "JetBrains Mono", monospace; font-size: 0.86em; background: var(--bg-2); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 14px 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 0 0 16px;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  pre .c { color: #8FA3B8; }
+
+  .cap {
+    border-left: 3px solid var(--cap);
+    background: var(--cap-soft);
+    padding: 12px 16px;
+    margin: 18px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .cap .lbl { font-family: "Archivo", system-ui, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cap); display: block; margin-bottom: 4px; }
+  .cap p:last-child { margin-bottom: 0; }
+
+  .ex {
+    border: 1px solid var(--line);
+    padding: 14px 18px;
+    margin: 20px 0;
+    border-radius: 6px;
+    background: var(--bg-2);
+  }
+  .ex .lbl { font-family: "Archivo", system-ui, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); display: block; margin-bottom: 6px; }
+  .ex ol:last-child, .ex ul:last-child, .ex p:last-child { margin-bottom: 0; }
+
+  .tablewrap { overflow-x: auto; margin: 0 0 18px; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: "Archivo", system-ui, sans-serif; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+  td code { white-space: nowrap; }
+
+  .mermaid { background: var(--bg-2); border-radius: 6px; padding: 12px; margin: 0 0 18px; overflow-x: auto; }
+
+  dl.gloss { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0 0 16px; }
+  dl.gloss dt { font-weight: 600; font-family: "Archivo", system-ui, sans-serif; font-size: 15px; }
+  dl.gloss dd { margin: 0; color: var(--ink-2); }
+
+  .week { display: grid; grid-template-columns: 90px 1fr; gap: 0 16px; border-top: 1px solid var(--line); padding: 12px 0; }
+  .week .w { font-family: "Archivo", system-ui, sans-serif; font-weight: 600; font-size: 14px; color: var(--accent); padding-top: 2px; }
+  .week ul { margin: 0; }
+
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 14px; }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; gap: 24px; padding: 24px 18px 72px; }
+    nav.toc { position: static; max-height: none; }
+    nav.toc ol { border-left: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+    nav.toc li a { border-left: 0; padding-left: 0; }
+    dl.gloss { grid-template-columns: 1fr; gap: 2px; }
+    dl.gloss dd { margin-bottom: 10px; }
+    .week { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+</style>
+
+<div class="shell">
+<nav class="toc" aria-label="Índice del curso">
+  <div class="kicker">Índice</div>
+  <ol>
+    <li><a href="#m0"><b>00</b>Antes de empezar</a></li>
+    <li><a href="#m1"><b>01</b>La nube en 20 minutos</a></li>
+    <li><a href="#m2"><b>02</b>Qué es BTP y qué es el cockpit</a></li>
+    <li><a href="#m3"><b>03</b>La jerarquía de cuentas</a></li>
+    <li><a href="#m4"><b>04</b>Tour por el cockpit</a></li>
+    <li><a href="#m5"><b>05</b>Servicios: marketplace, instancias, suscripciones</a></li>
+    <li><a href="#m6"><b>06</b>Cloud Foundry para desarrolladores</a></li>
+    <li><a href="#m7"><b>07</b>Seguridad e identidad</a></li>
+    <li><a href="#m8"><b>08</b>Conectividad y destinations</a></li>
+    <li><a href="#m9"><b>09</b>De un proyecto CAP al cockpit</a></li>
+    <li><a href="#m10"><b>10</b>Operar el día a día</a></li>
+    <li><a href="#m11"><b>11</b>Plan de práctica de 4 semanas</a></li>
+    <li><a href="#chuleta"><b>—</b>Chuleta de comandos</a></li>
+    <li><a href="#glosario"><b>—</b>Glosario</a></li>
+    <li><a href="#recursos"><b>—</b>Recursos</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <div class="kicker">Curso introductorio</div>
+  <h1>BTP Cockpit desde cero para un desarrollador backend</h1>
+  <p class="lede">Lo justo para entrar en el cockpit de tu empresa, entender qué estás viendo, encontrar dónde vive cada pieza de un proyecto CAP desplegado y no romper nada por el camino.</p>
+  <div class="meta">
+    <span><b>Para quién:</b> backend dev sin experiencia en nube ni en SAP</span>
+    <span><b>Duración:</b> 11 módulos, unas 12–15 h con prácticas</span>
+    <span><b>Requisito:</b> una cuenta trial de BTP (gratis)</span>
+  </div>
+</header>
+
+<section class="mod" id="m0">
+  <div class="modhead"><span class="modnum">00</span><h2>Antes de empezar</h2></div>
+  <p class="goal">Cómo está montado el curso y cómo sacarle partido.</p>
+  <p>Cada módulo tiene un objetivo, una explicación corta, rutas exactas dentro del cockpit y, casi siempre, un ejercicio. Las rutas del cockpit aparecen así: <span class="path">Subaccount <i>›</i> Services <i>›</i> Instances and Subscriptions</span>. El cockpit está en inglés en casi todas las empresas, así que los nombres de menú se mantienen en inglés aunque el curso esté en castellano.</p>
+  <p>Las notas ámbar conectan cada concepto con lo que te vas a encontrar en un proyecto CAP real. Si algo del cockpit te parece abstracto, salta a la nota ámbar y vuelve.</p>
+  <div class="cap"><span class="lbl">Para un dev CAP</span><p>Casi todo lo que hoy ves en tu <code>mta.yaml</code>, en <code>xs-security.json</code> o en los <code>requires</code> de <code>package.json</code> tiene un reflejo directo en alguna pantalla del cockpit. El objetivo del curso es que puedas mirar un fichero y saber en qué pantalla se materializa, y al revés.</p></div>
+  <div class="ex"><span class="lbl">Ejercicio 0</span>
+    <ol>
+      <li>Crea una cuenta trial en <a href="https://account.hanatrial.ondemand.com">account.hanatrial.ondemand.com</a>. Es gratis, no pide tarjeta y te da una global account con una subaccount ya configurada con Cloud Foundry.</li>
+      <li>Pide a alguien de tu empresa acceso de solo lectura (<em>Subaccount Viewer</em>) a la subaccount de desarrollo de algún proyecto. Ver un entorno real mientras aprendes en el trial multiplica el aprendizaje.</li>
+      <li>Instala en tu máquina: Node.js LTS, <code>@sap/cds-dk</code>, la CLI de Cloud Foundry (<code>cf</code>) y la CLI de BTP (<code>btp</code>). Los enlaces están en <a href="#recursos">Recursos</a>.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m1">
+  <div class="modhead"><span class="modnum">01</span><h2>La nube en 20 minutos</h2></div>
+  <p class="goal">El vocabulario mínimo de nube para que BTP no suene a magia.</p>
+  <h3>Tres capas de servicio</h3>
+  <ul>
+    <li><strong>IaaS</strong> (infraestructura): alguien te alquila máquinas virtuales, red y disco. Tú instalas y operas todo lo demás. AWS EC2, Azure VMs.</li>
+    <li><strong>PaaS</strong> (plataforma): alguien te da un sitio donde subir tu código y bases de datos ya gestionadas. Tú no ves servidores. <strong>BTP es esto.</strong></li>
+    <li><strong>SaaS</strong> (software): alguien te da una aplicación terminada que solo configuras. SuccessFactors, S/4HANA Cloud, y también herramientas de BTP como Business Application Studio.</li>
+  </ul>
+  <h3>Ideas que vas a usar todos los días</h3>
+  <ul>
+    <li><strong>Región</strong>: centro de datos físico donde corre tu cosa. En BTP se identifican con códigos como <code>eu10</code> (Frankfurt, AWS), <code>eu20</code> (Países Bajos, Azure), <code>us10</code>. La región fija la URL de tus apps y dónde están tus datos.</li>
+    <li><strong>Hyperscaler</strong>: el proveedor de IaaS por debajo. BTP corre sobre AWS, Azure, GCP o Alibaba según la región. Tú nunca lo tocas, pero explica por qué existen tantas regiones.</li>
+    <li><strong>Multi-tenant</strong>: un mismo servicio atiende a muchos clientes aislados. Muchos servicios de BTP son así, y las apps CAP pueden ser multi-tenant también.</li>
+    <li><strong>Servicio gestionado</strong>: base de datos, cola, autenticación, que alguien opera por ti. Tú pides una <em>instancia</em>, te dan unas <em>credenciales</em>, y las usas. Este ciclo es el corazón del cockpit.</li>
+    <li><strong>Escalado horizontal</strong>: más copias de tu app en vez de una máquina más grande. En Cloud Foundry se llama <em>instances</em> de una aplicación.</li>
+    <li><strong>Twelve-factor app</strong>: la configuración va en variables de entorno, los logs van a la salida estándar, la app no guarda estado en disco. Cloud Foundry asume que tu app sigue estas reglas. CAP las sigue por defecto.</li>
+  </ul>
+  <div class="cap"><span class="lbl">Para un dev CAP</span><p>Cuando haces <code>cds watch</code> en local, CAP usa SQLite y un mock de autenticación. En BTP esos dos huecos los rellenan servicios gestionados: SAP HANA Cloud y XSUAA. Tu código no cambia. Lo que cambia es el <em>binding</em>, que verás en el módulo 06.</p></div>
+  <div class="ex"><span class="lbl">Ejercicio 1</span>
+    <ol>
+      <li>Entra en tu trial y en el <strong>Overview</strong> de la subaccount localiza la región y el proveedor (por ejemplo "US East (VA) - AWS"). Ese es tu hyperscaler.</li>
+      <li>Busca en la documentación de BTP la tabla de regiones y averigua qué código de región y qué hyperscaler usa la subaccount de tu empresa. Pregunta a un compañero si no tienes acceso.</li>
+      <li>Abre un proyecto CAP de la empresa y localiza tres cosas que sigan las reglas twelve-factor: dónde se lee la configuración, a dónde van los logs y qué pasa con los ficheros subidos. Anota cualquier excepción que encuentres.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m2">
+  <div class="modhead"><span class="modnum">02</span><h2>Qué es BTP y qué es el cockpit</h2></div>
+  <p class="goal">Situar BTP en el mapa SAP y entender qué papel juega el cockpit.</p>
+  <p><strong>SAP Business Technology Platform</strong> es la plataforma en la nube de SAP. Sirve para extender los sistemas SAP (S/4HANA, SuccessFactors) sin tocar su núcleo, para integrar sistemas y para construir aplicaciones nuevas. Reúne cuatro grandes bloques: desarrollo de aplicaciones y automatización, integración, datos y analítica, e inteligencia artificial. Como desarrollador CAP vives sobre todo en el primero.</p>
+  <p><strong>El cockpit</strong> es la consola web de administración de BTP: <a href="https://cockpit.btp.cloud.sap">cockpit.btp.cloud.sap</a> (para trial, <a href="https://cockpit.hanatrial.ondemand.com">cockpit.hanatrial.ondemand.com</a>). Desde él gestionas cuentas, das permisos a personas, contratas servicios, configuras conexiones y miras el estado de las aplicaciones. No es un IDE ni un sistema de despliegue: el código se despliega con herramientas de línea de comandos o pipelines, y el cockpit te enseña el resultado.</p>
+  <h3>Los tres entornos de ejecución</h3>
+  <p>BTP ofrece varios <em>runtimes</em> donde ejecutar código. Una subaccount puede tener varios habilitados a la vez.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Entorno</th><th>Qué es</th><th>Cuándo lo verás</th></tr>
+    <tr><td><strong>Cloud Foundry</strong></td><td>PaaS de código abierto. Subes una app y la plataforma se encarga de contenedores, rutas y escalado.</td><td>La inmensa mayoría de proyectos CAP. Es el foco de este curso.</td></tr>
+    <tr><td><strong>Kyma</strong></td><td>Kubernetes gestionado con extras serverless. Más control, más complejidad.</td><td>Proyectos que necesitan contenedores propios o ya trabajan con Kubernetes.</td></tr>
+    <tr><td><strong>ABAP environment</strong></td><td>Un sistema ABAP en la nube (Steampunk).</td><td>Equipos ABAP que extienden S/4HANA. No lo tocarás desde CAP.</td></tr>
+  </table></div>
+  <p>Si alguien menciona <strong>Neo</strong>, es el entorno antiguo de BTP, en retirada. No inviertas tiempo en él salvo que un proyecto heredado te obligue.</p>
+  <div class="ex"><span class="lbl">Ejercicio 2</span>
+    <ol>
+      <li>En el <strong>Overview</strong> de tu subaccount trial identifica qué entornos están habilitados. Lo normal es que veas Cloud Foundry activo y Kyma disponible pero sin habilitar. No actives Kyma todavía.</li>
+      <li>Entra en el <a href="https://discovery-center.cloud.sap">Discovery Center</a>, busca "Cloud Application Programming Model" y lee la ficha. Después busca "SAP HANA Cloud" y mira en qué regiones está disponible y qué planes tiene.</li>
+      <li>Pregunta en tu empresa qué entorno usa cada proyecto de BTP en el que participas. Si alguno usa Kyma o Neo, apúntalo para saber qué partes de este curso no le aplican.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m3">
+  <div class="modhead"><span class="modnum">03</span><h2>La jerarquía de cuentas</h2></div>
+  <p class="goal">El modelo mental más importante del curso. Sin esto, el cockpit es un laberinto.</p>
+  <pre class="mermaid">
+graph TD
+  GA["Global Account<br/>(el contrato con SAP)"]
+  D1["Directory: Proyecto Ventas"]
+  D2["Directory: Proyecto RRHH"]
+  S1["Subaccount: ventas-dev<br/>eu10"]
+  S2["Subaccount: ventas-qa<br/>eu10"]
+  S3["Subaccount: ventas-prod<br/>eu10"]
+  S4["Subaccount: rrhh-dev<br/>eu20"]
+  CF["CF Org<br/>(una por subaccount)"]
+  SP1["Space: dev"]
+  SP2["Space: sandbox"]
+  APP["Apps + service instances"]
+  GA --> D1
+  GA --> D2
+  D1 --> S1
+  D1 --> S2
+  D1 --> S3
+  D2 --> S4
+  S1 --> CF
+  CF --> SP1
+  CF --> SP2
+  SP1 --> APP
+  </pre>
+  <h3>Global account</h3>
+  <p>Representa el contrato comercial con SAP. Una empresa suele tener una o muy pocas. Aquí se ven los <em>entitlements</em> (qué servicios y cuánta cantidad ha comprado la empresa) y el consumo. Los administradores globales reparten esos entitlements entre las subaccounts. Como desarrollador rara vez tendrás permisos aquí, pero necesitas entender que es la fuente de todo lo demás.</p>
+  <h3>Directories</h3>
+  <p>Carpetas opcionales para agrupar subaccounts por proyecto, departamento o cliente. Pueden tener sus propios administradores y sus propios entitlements. Si tu empresa tiene muchos proyectos, probablemente hay un directory por proyecto.</p>
+  <h3>Subaccount</h3>
+  <p>La unidad de trabajo real. Una subaccount vive en <strong>una región</strong>, tiene <strong>sus propios usuarios y roles</strong>, <strong>sus servicios</strong>, <strong>sus destinations</strong> y <strong>sus entornos</strong>. Lo habitual es tener una subaccount por entorno de un proyecto: <code>proyecto-dev</code>, <code>proyecto-qa</code>, <code>proyecto-prod</code>. Casi todo el curso ocurre dentro de una subaccount.</p>
+  <h3>Cloud Foundry org y spaces</h3>
+  <p>Al habilitar Cloud Foundry en una subaccount se crea una <strong>org</strong> (siempre exactamente una por subaccount). Dentro de la org creas <strong>spaces</strong>: contenedores lógicos donde viven aplicaciones e instancias de servicio, cada uno con sus propios miembros. Un patrón común es un único space <code>dev</code> por subaccount, o varios spaces para distintos equipos o features.</p>
+  <h3>Entitlements y quotas</h3>
+  <p>Un <strong>entitlement</strong> es el derecho a usar un servicio con un <em>plan</em> concreto. Una <strong>quota</strong> es cuánto: número de instancias, GB de memoria. El flujo es: SAP concede al global account, el administrador asigna a la subaccount, y solo entonces el servicio aparece disponible en el marketplace de esa subaccount. Cuando intentes crear una instancia y no aparezca el servicio o el plan, la causa casi siempre es un entitlement no asignado.</p>
+  <h3>Modelos comerciales que oirás</h3>
+  <ul>
+    <li><strong>Trial</strong>: cuenta gratuita de aprendizaje, con caducidad y recursos limitados. Fíjate en el aviso de caducidad que muestra el propio cockpit.</li>
+    <li><strong>Free tier</strong>: planes marcados <code>free</code> en una cuenta de pago, para probar servicios sin coste.</li>
+    <li><strong>CPEA / BTPEA / Pay-As-You-Go</strong>: consumo. La empresa compra crédito y cada servicio lo va gastando. Es lo que hace que alguien de operaciones se ponga nervioso si dejas una instancia de HANA encendida sin usar.</li>
+    <li><strong>Subscription</strong>: precio fijo por servicio y periodo.</li>
+  </ul>
+  <div class="cap"><span class="lbl">Para un dev CAP</span><p>Cuando haces <code>cf login</code> eliges org y space. La org es tu subaccount; el space es donde aterrizan tus apps. Si tu <code>cf push</code> o <code>cf deploy</code> dice que el servicio <code>hana</code> con plan <code>hdi-shared</code> no existe, no es un problema de tu proyecto: es un entitlement que falta en esa subaccount.</p></div>
+  <div class="ex"><span class="lbl">Ejercicio 3</span>
+    <ol>
+      <li>Entra en tu trial. Identifica el nombre de la global account, la subaccount, su región y su CF org.</li>
+      <li>En <span class="path">Global Account <i>›</i> Entitlements <i>›</i> Entity Assignments</span> selecciona tu subaccount y anota tres servicios que tiene asignados y con qué plan.</li>
+      <li>En <span class="path">Subaccount <i>›</i> Cloud Foundry <i>›</i> Spaces</span> localiza el space <code>dev</code>. Crea un segundo space llamado <code>sandbox</code> y bórralo después.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m4">
+  <div class="modhead"><span class="modnum">04</span><h2>Tour por el cockpit</h2></div>
+  <p class="goal">Saber qué hay detrás de cada entrada del menú lateral de una subaccount.</p>
+  <p>Al abrir una subaccount ves un <strong>Overview</strong> con su región, el estado de los entornos habilitados y accesos rápidos. El menú lateral es tu mapa. Esta tabla es la que vas a volver a consultar durante semanas.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Menú</th><th>Qué contiene</th><th>Lo usarás para…</th></tr>
+    <tr><td><strong>Overview</strong></td><td>Datos de la subaccount, API endpoint de CF, entornos, uso.</td><td>Copiar el API endpoint para <code>cf login</code>. Habilitar Cloud Foundry o Kyma.</td></tr>
+    <tr><td><strong>Services › Service Marketplace</strong></td><td>Catálogo de servicios disponibles en la subaccount, según entitlements.</td><td>Crear instancias (HANA, XSUAA, Destination) y suscripciones (BAS, Work Zone).</td></tr>
+    <tr><td><strong>Services › Instances and Subscriptions</strong></td><td>Todo lo ya creado, con estado, plan y credenciales.</td><td>Ver a qué instancia está ligada tu app, crear service keys, abrir aplicaciones SaaS.</td></tr>
+    <tr><td><strong>Cloud Foundry › Spaces</strong></td><td>Los spaces de la org. Dentro: Applications, Service Instances, Routes, Members.</td><td>Ver si tu app está <em>Started</em> o <em>Crashed</em>, leer logs, mirar variables de entorno.</td></tr>
+    <tr><td><strong>Cloud Foundry › Org Members</strong></td><td>Usuarios con rol en la org.</td><td>Dar acceso de Org Manager o Space Developer a compañeros.</td></tr>
+    <tr><td><strong>Kyma Environment</strong></td><td>Habilitar y abrir el dashboard de Kubernetes.</td><td>Solo si tu proyecto usa Kyma.</td></tr>
+    <tr><td><strong>Connectivity › Destinations</strong></td><td>Conexiones con nombre a sistemas externos u on-premise.</td><td>Apuntar tu CAP a un S/4HANA, a una API externa o a otro servicio.</td></tr>
+    <tr><td><strong>Connectivity › Cloud Connectors</strong></td><td>Estado de los túneles con la red on-premise de la empresa.</td><td>Comprobar que el conector está conectado cuando falla una destination <em>OnPremise</em>.</td></tr>
+    <tr><td><strong>Security › Users</strong></td><td>Personas con acceso a la subaccount y sus role collections.</td><td>Asignar roles de tu app a un usuario de negocio o a ti mismo.</td></tr>
+    <tr><td><strong>Security › Role Collections</strong></td><td>Agrupaciones de roles que se asignan a usuarios.</td><td>Crear la colección <code>Ventas_Admin</code> que incluye el rol <code>Admin</code> de tu app.</td></tr>
+    <tr><td><strong>Security › Roles</strong></td><td>Roles generados por las apps desplegadas y por la plataforma.</td><td>Ver que tu <code>xs-security.json</code> se ha materializado.</td></tr>
+    <tr><td><strong>Security › Trust Configuration</strong></td><td>Proveedores de identidad conectados.</td><td>Entender de dónde vienen los usuarios (SAP ID Service o el IAS de la empresa).</td></tr>
+    <tr><td><strong>Entitlements</strong></td><td>Servicios y planes asignados a esta subaccount, con quotas.</td><td>Diagnosticar el clásico "el plan no aparece en el marketplace".</td></tr>
+    <tr><td><strong>HTML5 Applications</strong></td><td>Apps de frontend desplegadas en el repositorio HTML5.</td><td>Ver las UIs Fiori de tu proyecto si usan el HTML5 repo en lugar del approuter.</td></tr>
+    <tr><td><strong>Usage Analytics</strong></td><td>Consumo por servicio.</td><td>Ver qué está costando dinero.</td></tr>
+  </table></div>
+  <h3>A nivel de global account</h3>
+  <p>El menú es más corto: <strong>Account Explorer</strong> (el árbol de directories y subaccounts), <strong>Entitlements</strong>, <strong>Boosters</strong>, <strong>Security</strong> para administradores globales y <strong>Usage Analytics</strong>. Los <strong>Boosters</strong> son asistentes que configuran una subaccount para un escenario concreto en pocos clics. Hay uno llamado "Prepare an Account for Developing with SAP Cloud Application Programming Model" que hace exactamente lo que suena.</p>
+  <div class="ex"><span class="lbl">Ejercicio 4</span>
+    <ol>
+      <li>En tu trial, ejecuta el booster de CAP desde <span class="path">Global Account <i>›</i> Boosters</span>. Cuando termine, recorre <strong>Entitlements</strong>, <strong>Instances and Subscriptions</strong> y <strong>Role Collections</strong> de la subaccount y apunta qué ha cambiado respecto al ejercicio 3.</li>
+      <li>Abre cada entrada del menú lateral una vez, aunque esté vacía. Que ninguna pantalla te sea desconocida.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m5">
+  <div class="modhead"><span class="modnum">05</span><h2>Servicios: marketplace, instancias, suscripciones</h2></div>
+  <p class="goal">Entender el ciclo de vida de un servicio y conocer los que aparecen en cualquier proyecto CAP.</p>
+  <h3>Instancia frente a suscripción</h3>
+  <ul>
+    <li>Una <strong>instancia</strong> es un recurso que tu aplicación consume: un contenedor HDI en HANA, una configuración de XSUAA, un servicio de destinations. Tiene <em>plan</em>, <em>parámetros</em> y produce <em>credenciales</em>. Tú la ligas a tus apps.</li>
+    <li>Una <strong>suscripción</strong> es una aplicación SaaS que las personas usan desde el navegador: Business Application Studio, Build Work Zone, HANA Cloud Central. No se liga a nada, se abre con un enlace y se controla con role collections.</li>
+  </ul>
+  <h3>El ciclo de vida de una instancia</h3>
+  <ol>
+    <li><strong>Entitlement</strong> asignado a la subaccount.</li>
+    <li><strong>Crear instancia</strong> en el marketplace eligiendo plan, runtime (Cloud Foundry, y entonces un space), nombre y, a veces, un JSON de parámetros. Para XSUAA ese JSON es tu <code>xs-security.json</code>.</li>
+    <li><strong>Binding</strong>: ligar la instancia a una app. Las credenciales aparecen en la variable de entorno <code>VCAP_SERVICES</code> de la app.</li>
+    <li><strong>Service key</strong>: credenciales para consumir la instancia desde fuera de la plataforma, por ejemplo desde tu portátil. Las creas en <span class="path">Instances and Subscriptions <i>›</i> instancia <i>›</i> Service Keys</span>.</li>
+    <li><strong>Borrar</strong>: primero desligar (unbind), luego borrar. El cockpit se niega a borrar una instancia con bindings activos.</li>
+  </ol>
+  <h3>Los servicios que verás en todos los proyectos CAP</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Servicio (nombre en marketplace)</th><th>Nombre técnico / plan típico</th><th>Para qué sirve</th></tr>
+    <tr><td>SAP HANA Cloud</td><td>Suscripción + instancia <code>hana-cloud</code></td><td>La base de datos. Se administra desde <strong>SAP HANA Cloud Central</strong>. En trial la instancia se apaga sola y hay que arrancarla a mano cada día.</td></tr>
+    <tr><td>SAP HANA Schemas &amp; HDI Containers</td><td><code>hana</code> / <code>hdi-shared</code></td><td>Un esquema aislado dentro de la instancia HANA para tu app. Es lo que despliega tu <code>db-deployer</code>.</td></tr>
+    <tr><td>Authorization and Trust Management Service</td><td><code>xsuaa</code> / <code>application</code></td><td>Autenticación OAuth2 y autorización. Tu <code>xs-security.json</code> se convierte en roles y scopes aquí.</td></tr>
+    <tr><td>Destination Service</td><td><code>destination</code> / <code>lite</code></td><td>Acceso programático a las destinations de la subaccount.</td></tr>
+    <tr><td>Connectivity Service</td><td><code>connectivity</code> / <code>lite</code></td><td>Salida hacia sistemas on-premise a través del Cloud Connector.</td></tr>
+    <tr><td>SAP Business Application Studio</td><td>Suscripción</td><td>IDE web basado en VS Code. Muchos equipos SAP lo usan en vez de VS Code local.</td></tr>
+    <tr><td>SAP Build Work Zone, standard edition</td><td>Suscripción + instancia <code>html5-apps-repo</code></td><td>El launchpad Fiori donde el usuario final encuentra las apps.</td></tr>
+    <tr><td>Application Logging / SAP Cloud Logging</td><td><code>application-logs</code> / <code>lite</code></td><td>Centraliza logs de las apps con Kibana u OpenSearch. Cloud Logging es el sucesor.</td></tr>
+    <tr><td>Job Scheduling Service</td><td><code>jobscheduler</code></td><td>Cron gestionado que llama a endpoints de tu app.</td></tr>
+    <tr><td>Alert Notification</td><td><code>alert-notification</code></td><td>Avisos por correo, Slack o Teams cuando una app se cae o envías eventos propios.</td></tr>
+    <tr><td>Credential Store</td><td><code>credstore</code></td><td>Guardar secretos fuera del código y de las variables de entorno.</td></tr>
+    <tr><td>Event Mesh</td><td><code>enterprise-messaging</code></td><td>Mensajería asíncrona. CAP lo soporta de forma nativa para eventos.</td></tr>
+    <tr><td>Cloud Transport Management</td><td>Suscripción</td><td>Mover MTAs de dev a qa a prod de forma controlada.</td></tr>
+  </table></div>
+  <div class="cap"><span class="lbl">Para un dev CAP</span><p>Abre el <code>mta.yaml</code> de un proyecto de tu empresa y mira la sección <code>resources</code>. Cada entrada con <code>type: org.cloudfoundry.managed-service</code> es una instancia que verás en <strong>Instances and Subscriptions</strong> con ese mismo nombre. Los campos <code>service</code> y <code>service-plan</code> son el nombre técnico y el plan de la tabla anterior.</p></div>
+  <div class="ex"><span class="lbl">Ejercicio 5</span>
+    <ol>
+      <li>Crea a mano una instancia de <strong>Destination Service</strong> plan <code>lite</code> en el space <code>dev</code>. Créale una service key y mira el JSON: identifica <code>clientid</code>, <code>clientsecret</code> y <code>url</code>. Ese JSON tiene la misma forma que lo que tu app recibe por binding.</li>
+      <li>Abre <strong>SAP HANA Cloud Central</strong> desde la suscripción de SAP HANA Cloud. Comprueba si tu instancia está <em>Running</em> o <em>Stopped</em> y arráncala.</li>
+      <li>Borra la instancia de destination del punto 1. Observa el orden que exige el cockpit.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m6">
+  <div class="modhead"><span class="modnum">06</span><h2>Cloud Foundry para desarrolladores</h2></div>
+  <p class="goal">Entender qué le pasa a tu código cuando lo despliegas y cómo lo inspeccionas desde el cockpit y la CLI.</p>
+  <h3>Qué hace Cloud Foundry con una app</h3>
+  <ol>
+    <li>Recibe tu código (o un <code>.mtar</code>) mediante <code>cf push</code> o <code>cf deploy</code>.</li>
+    <li>Elige un <strong>buildpack</strong> según lo que ve. Para CAP Node.js, el buildpack de Node instala dependencias y construye un contenedor (<em>droplet</em>).</li>
+    <li>Arranca N <strong>instancias</strong> del contenedor con la memoria que pediste y les inyecta variables de entorno, incluida <code>VCAP_SERVICES</code> con las credenciales de las instancias ligadas.</li>
+    <li>Publica una <strong>route</strong>: una URL como <code>ventas-srv.cfapps.eu10.hana.ondemand.com</code>. Si la app deja de escuchar en el puerto que le indican, se marca <em>Crashed</em> y se reinicia.</li>
+  </ol>
+  <h3>Qué ves en el cockpit</h3>
+  <p>En <span class="path">Subaccount <i>›</i> Cloud Foundry <i>›</i> Spaces <i>›</i> dev <i>›</i> Applications</span> aparece cada app con su estado, número de instancias, memoria y disco. Al entrar en una app tienes:</p>
+  <ul>
+    <li><strong>Overview</strong>: estado, instancias corriendo, buildpack, botones de Start, Stop, Restart y Restage.</li>
+    <li><strong>Routes</strong>: las URLs públicas. Una app sin route no es accesible desde fuera, algo deseable para tu <code>srv</code> si va detrás de un approuter.</li>
+    <li><strong>Service Bindings</strong>: instancias ligadas. Aquí compruebas que <code>srv</code> ve la HDI container y la XSUAA.</li>
+    <li><strong>Environment Variables</strong>: las de usuario y las de sistema, con <code>VCAP_SERVICES</code> completo. Cuidado, aquí se ven secretos.</li>
+    <li><strong>Logs</strong>: los últimos minutos. Para investigar en serio, usa la CLI o Application Logging.</li>
+    <li><strong>Events</strong>: quién hizo qué y cuándo. Útil para saber quién reinició la app anoche.</li>
+  </ul>
+  <h3>Roles de Cloud Foundry</h3>
+  <p>Son independientes de los roles de la subaccount. Para desplegar necesitas <strong>Space Developer</strong> en el space. <strong>Space Manager</strong> gestiona miembros del space. <strong>Org Manager</strong> crea spaces y asigna roles. <strong>Auditor</strong> solo lee. Los asignas en <span class="path">Cloud Foundry <i>›</i> Spaces <i>›</i> dev <i>›</i> Members</span>.</p>
+  <h3>La CLI, tu herramienta real</h3>
+  <pre><code><span class="c"># El API endpoint está en el Overview de la subaccount</span>
+cf login -a https://api.cf.eu10.hana.ondemand.com --sso
+cf target -o &lt;org&gt; -s dev
+
+cf apps                          <span class="c"># estado de todas las apps del space</span>
+cf app ventas-srv                <span class="c"># detalle: instancias, memoria, CPU, routes</span>
+cf logs ventas-srv --recent      <span class="c"># últimos logs</span>
+cf logs ventas-srv               <span class="c"># seguir logs en vivo</span>
+cf env ventas-srv                <span class="c"># VCAP_SERVICES y variables de usuario</span>
+cf services                      <span class="c"># instancias de servicio del space</span>
+cf service-key ventas-xsuaa mykey <span class="c"># leer una service key</span>
+cf restart ventas-srv
+cf scale ventas-srv -i 2 -m 512M
+cf ssh ventas-srv                <span class="c"># shell dentro del contenedor</span></code></pre>
+  <div class="cap"><span class="lbl">Para un dev CAP</span><p>El runtime de CAP lee <code>VCAP_SERVICES</code> al arrancar y liga cada servicio por su <code>label</code> o por su <code>tag</code>: la entrada con tag <code>hana</code> se convierte en tu base de datos y la de tag <code>xsuaa</code> en tu autenticación. Por eso en producción no hay <code>cds.requires.db</code> apuntando a SQLite: el binding manda. Cuando una app CAP arranca y muere con "no database", casi siempre falta un binding.</p></div>
+  <div class="ex"><span class="lbl">Ejercicio 6</span>
+    <ol>
+      <li>Haz <code>cf login</code> contra tu trial y ejecuta <code>cf apps</code> y <code>cf services</code>. Compara con lo que ves en el cockpit.</li>
+      <li>Despliega el ejemplo de CAP <code>bookshop</code> con <code>cds add hana,xsuaa,mta</code>, <code>mbt build</code> y <code>cf deploy</code>. Los pasos exactos están en el módulo 09; aquí basta con llegar a ver la app en el cockpit.</li>
+      <li>Párala desde el cockpit, comprueba con <code>cf apps</code> que está <em>stopped</em>, y arráncala desde la CLI.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m7">
+  <div class="modhead"><span class="modnum">07</span><h2>Seguridad e identidad</h2></div>
+  <p class="goal">Entender quién puede entrar, con qué roles, y cómo tu <code>xs-security.json</code> acaba siendo un checkbox en el cockpit.</p>
+  <h3>Dos preguntas distintas</h3>
+  <ul>
+    <li><strong>Autenticación</strong>: ¿quién eres? La responde un <em>proveedor de identidad</em> (IdP). Por defecto, el <strong>SAP ID Service</strong> (tu usuario de sap.com). Las empresas suelen conectar su propio tenant de <strong>SAP Cloud Identity Services (IAS)</strong>, federado con Azure AD o similar, para que la gente entre con su usuario corporativo. Se ve en <span class="path">Security <i>›</i> Trust Configuration</span>.</li>
+    <li><strong>Autorización</strong>: ¿qué puedes hacer? La responde <strong>XSUAA</strong> con scopes y roles, agrupados en role collections y asignados a usuarios.</li>
+  </ul>
+  <h3>La cadena completa, de tu fichero al usuario</h3>
+  <pre class="mermaid">
+graph LR
+  A["xs-security.json<br/>scopes + role-templates"] --> B["Instancia XSUAA<br/>(se crea con el deploy)"]
+  B --> C["Roles<br/>Security › Roles"]
+  C --> D["Role Collection<br/>Security › Role Collections"]
+  D --> E["Usuario<br/>Security › Users"]
+  E --> F["Token JWT con scopes<br/>que tu CAP evalúa en @requires"]
+  </pre>
+  <ol>
+    <li>En <code>xs-security.json</code> declaras <code>scopes</code> (permisos atómicos) y <code>role-templates</code> (agrupaciones con nombre).</li>
+    <li>Al desplegar, la instancia XSUAA lee ese fichero. En <span class="path">Security <i>›</i> Roles</span> aparece un rol por cada template, con el nombre de tu app como prefijo.</li>
+    <li>Alguien crea una <strong>role collection</strong> (por ejemplo <code>Ventas_Admin</code>) y mete dentro el rol <code>Admin</code> de tu app. Se puede automatizar con <code>role-collections</code> en el propio <code>xs-security.json</code>.</li>
+    <li>En <span class="path">Security <i>›</i> Users</span> se asigna la role collection al usuario. Si el IdP es IAS, la asignación también se puede hacer por grupos.</li>
+    <li>Cuando el usuario entra, el approuter le consigue un token de XSUAA con los scopes de sus roles. CAP lo lee y aplica <code>@requires</code> y <code>@restrict</code>.</li>
+  </ol>
+  <h3>Role collections de la plataforma</h3>
+  <p>Aparte de las de tus apps, hay colecciones predefinidas que dan permisos sobre el propio cockpit: <strong>Subaccount Administrator</strong>, <strong>Subaccount Viewer</strong>, <strong>Cloud Connector Administrator</strong>, <strong>Destination Administrator</strong>, y a nivel global <strong>Global Account Administrator</strong>. Pide <em>Viewer</em> para aprender y <em>Administrator</em> solo en subaccounts de desarrollo.</p>
+  <div class="cap"><span class="lbl">Para un dev CAP</span><p>El error 403 tras desplegar es casi siempre esto: el rol existe, pero nadie te ha asignado la role collection, o la asignaste y no cerraste sesión para renovar el token. El 401 en cambio suele ser approuter mal configurado o que estás llamando a <code>srv</code> directamente por su route sin token.</p></div>
+  <div class="ex"><span class="lbl">Ejercicio 7</span>
+    <ol>
+      <li>En el <code>bookshop</code> desplegado, añade en <code>xs-security.json</code> un scope <code>Admin</code> y un role template <code>Admin</code>. Anota <code>@requires: 'Admin'</code> en el servicio de administración. Redespliega.</li>
+      <li>Comprueba que el rol aparece en <span class="path">Security <i>›</i> Roles</span>. Crea la role collection <code>Bookshop_Admin</code>, añade el rol y asígnatela.</li>
+      <li>Prueba la app antes y después de cerrar sesión. Explica el resultado.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m8">
+  <div class="modhead"><span class="modnum">08</span><h2>Conectividad y destinations</h2></div>
+  <p class="goal">Saber cómo una app en BTP habla con un S/4HANA, con una API externa o con otra app sin hardcodear URLs ni credenciales.</p>
+  <h3>Destination</h3>
+  <p>Una <strong>destination</strong> es una conexión con nombre que vive en la subaccount: URL, tipo de autenticación, credenciales y propiedades adicionales. Tu código pide "la destination <code>S4_SALES</code>" y el Destination Service le devuelve la URL y un token o cabecera de autenticación ya resuelto. Ventajas: la misma app funciona en dev, qa y prod apuntando a sistemas distintos, y las credenciales no están en el código.</p>
+  <p>Se crean en <span class="path">Connectivity <i>›</i> Destinations</span>. Campos que importan:</p>
+  <ul>
+    <li><strong>Type</strong>: HTTP en el 95 % de los casos. También RFC, LDAP, MAIL.</li>
+    <li><strong>Proxy Type</strong>: <code>Internet</code> para cualquier cosa alcanzable desde la nube; <code>OnPremise</code> para sistemas dentro de la red corporativa, que pasan por el Cloud Connector.</li>
+    <li><strong>Authentication</strong>: <code>NoAuthentication</code>, <code>BasicAuthentication</code>, <code>OAuth2ClientCredentials</code> (servicio a servicio), <code>OAuth2SAMLBearerAssertion</code> y <code>PrincipalPropagation</code> (el usuario final se propaga al sistema destino con su propia identidad).</li>
+    <li><strong>Additional Properties</strong>: pares clave-valor. <code>HTML5.DynamicDestination</code>, <code>WebIDEEnabled</code> y <code>sap-client</code> son habituales en proyectos SAP.</li>
+  </ul>
+  <p>El botón <strong>Check Connection</strong> solo prueba que se alcanza el host, no que las credenciales sean válidas. No lo tomes como prueba definitiva.</p>
+  <h3>Cloud Connector</h3>
+  <p>Es un programa que se instala en la red on-premise de la empresa y abre un túnel saliente hacia una o varias subaccounts. Dentro se declaran qué sistemas internos y qué rutas se exponen. Desde BTP se ve en <span class="path">Connectivity <i>›</i> Cloud Connectors</span> con estado conectado o no, y las destinations <code>OnPremise</code> usan el <em>virtual host</em> que define el conector, no el hostname real. Lo administra normalmente el equipo de infraestructura o basis; tú necesitas saber leer su estado y su location ID.</p>
+  <div class="cap"><span class="lbl">Para un dev CAP</span><p>En CAP consumes una destination declarando un servicio externo en <code>package.json</code> con <code>"credentials": { "destination": "S4_SALES" }</code> y usando <code>cds.connect.to</code>. En local puedes emular la destination con una entrada en <code>.cdsrc-private.json</code> o con <code>cds bind</code> al Destination Service real. La misma <code>edmx</code> importada con <code>cds import</code> sirve en ambos casos.</p></div>
+  <div class="ex"><span class="lbl">Ejercicio 8</span>
+    <ol>
+      <li>Crea una destination <code>NORTHWIND</code> de tipo HTTP, proxy Internet, sin autenticación, apuntando a <code>https://services.odata.org</code>. Es un OData público de pruebas.</li>
+      <li>En tu <code>bookshop</code>, importa el servicio Northwind con <code>cds import</code> desde su metadata y configura el servicio externo para usar esa destination. Despliega y llama a un endpoint que la use.</li>
+      <li>Cambia la URL de la destination a algo erróneo, sin redesplegar, y observa el error en los logs. Vuelve a dejarla bien. Acabas de ver por qué las destinations son configuración y no código.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m9">
+  <div class="modhead"><span class="modnum">09</span><h2>De un proyecto CAP al cockpit</h2></div>
+  <p class="goal">Recorrer el despliegue completo de un CAP y saber dónde mirar cuando algo falla.</p>
+  <h3>Las piezas de un proyecto CAP desplegado</h3>
+  <pre class="mermaid">
+graph TD
+  subgraph mta["mta.yaml: modules"]
+    M1["approuter<br/>(entrada, login, proxy)"]
+    M2["srv<br/>(tu CAP Node.js)"]
+    M3["db-deployer<br/>(despliega el esquema y muere)"]
+  end
+  subgraph res["mta.yaml: resources"]
+    R1["xsuaa<br/>application"]
+    R2["hana<br/>hdi-shared"]
+    R3["destination<br/>lite"]
+  end
+  M1 --> R1
+  M2 --> R1
+  M2 --> R2
+  M2 --> R3
+  M3 --> R2
+  </pre>
+  <p>Los <strong>modules</strong> se convierten en aplicaciones de Cloud Foundry; los <strong>resources</strong>, en instancias de servicio. Las flechas son bindings. El <code>db-deployer</code> es una app peculiar: arranca, despliega los artefactos HDI a la base de datos y se detiene. Verla en estado <em>Stopped</em> tras un deploy es normal.</p>
+  <h3>El flujo de despliegue</h3>
+  <pre><code><span class="c"># Una sola vez por máquina</span>
+npm i -g @sap/cds-dk mbt
+cf install-plugin multiapps
+
+<span class="c"># Proyecto nuevo o existente</span>
+cds init bookshop &amp;&amp; cd bookshop
+cds add hana,xsuaa,approuter,mta   <span class="c"># genera mta.yaml, xs-security.json, approuter/</span>
+
+<span class="c"># Construir y desplegar</span>
+mbt build                          <span class="c"># produce mta_archives/bookshop_1.0.0.mtar</span>
+cf login -a https://api.cf.eu10.hana.ondemand.com --sso
+cf deploy mta_archives/bookshop_1.0.0.mtar</code></pre>
+  <p><code>cf deploy</code> hace en orden: crear o actualizar las instancias de servicio, subir las apps, ligar servicios, ejecutar el <code>db-deployer</code>, arrancar <code>srv</code> y <code>approuter</code>, y publicar las routes. Cada uno de esos pasos tiene su pantalla en el cockpit.</p>
+  <h3>Dónde mirar después del deploy</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Quiero comprobar…</th><th>Voy a…</th></tr>
+    <tr><td>Que las instancias se crearon con el plan correcto</td><td><span class="path">Services <i>›</i> Instances and Subscriptions</span></td></tr>
+    <tr><td>Que <code>srv</code> está arrancada y con cuántas instancias</td><td><span class="path">Cloud Foundry <i>›</i> Spaces <i>›</i> dev <i>›</i> Applications</span></td></tr>
+    <tr><td>La URL para probar la app</td><td>Applications › approuter › <strong>Routes</strong></td></tr>
+    <tr><td>Que <code>srv</code> ve la base de datos</td><td>Applications › srv › <strong>Service Bindings</strong></td></tr>
+    <tr><td>Por qué no arranca</td><td>Applications › srv › <strong>Logs</strong>, o mejor <code>cf logs srv --recent</code></td></tr>
+    <tr><td>Que mis roles existen</td><td><span class="path">Security <i>›</i> Roles</span> filtrando por el nombre de la app</td></tr>
+    <tr><td>Que las tablas están en HANA</td><td>Instancia <code>hdi-shared</code> › service key, y abrir con Database Explorer desde HANA Cloud Central</td></tr>
+  </table></div>
+  <h3>Fallos típicos y su diagnóstico</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Síntoma</th><th>Causa habitual</th><th>Dónde se ve</th></tr>
+    <tr><td>El deploy falla creando el servicio <code>hana</code></td><td>Entitlement <code>hdi-shared</code> no asignado, o instancia HANA Cloud parada</td><td>Entitlements; HANA Cloud Central</td></tr>
+    <tr><td><code>db-deployer</code> termina con error</td><td>Error en los artefactos HDI o en los datos CSV. Es un error de tu modelo, no de la plataforma</td><td>Logs del db-deployer</td></tr>
+    <tr><td><code>srv</code> pasa a <em>Crashed</em> en bucle</td><td>Excepción al arrancar, falta un binding, o memoria insuficiente</td><td><code>cf logs srv --recent</code>; Overview de la app muestra la memoria</td></tr>
+    <tr><td>401 al abrir la app</td><td>Approuter sin XSUAA ligada o <code>xs-app.json</code> con rutas mal definidas</td><td>Service Bindings del approuter</td></tr>
+    <tr><td>403 en un endpoint concreto</td><td>Role collection no asignada o token viejo</td><td>Security › Users; cerrar sesión y volver</td></tr>
+    <tr><td>Error llamando a un sistema externo</td><td>Destination mal configurada o Cloud Connector desconectado</td><td>Connectivity › Destinations; Cloud Connectors</td></tr>
+    <tr><td>La app funciona pero no aparece en el launchpad</td><td>Work Zone no configurado o el usuario no tiene el rol del site</td><td>Suscripción a Build Work Zone</td></tr>
+  </table></div>
+  <div class="cap"><span class="lbl">Para un dev CAP, y en especial para ti que te gusta el testing</span><p>El modo <strong>híbrido</strong> de CAP te permite ejecutar la app en tu portátil contra la HANA y la XSUAA reales de la subaccount, usando service keys. Es la forma de escribir tests de integración contra la base de datos de verdad sin desplegar cada vez.</p>
+  <pre><code>cds bind -2 bookshop-db          <span class="c"># crea una service key y la guarda en .cdsrc-private.json</span>
+cds bind -2 bookshop-auth
+cds watch --profile hybrid       <span class="c"># corre en local con HANA y XSUAA reales</span>
+cds bind --exec -- npm test      <span class="c"># tus tests, contra la HANA de dev</span></code></pre>
+  <p>El fichero <code>.cdsrc-private.json</code> no contiene secretos, solo referencias a la service key; las credenciales se resuelven en cada arranque. Añádelo igualmente a <code>.gitignore</code>.</p></div>
+  <div class="ex"><span class="lbl">Ejercicio 9</span>
+    <ol>
+      <li>Rompe deliberadamente el <code>bookshop</code>: mete un CSV con una clave duplicada y despliega. Encuentra el error usando solo el cockpit. Repite usando solo la CLI.</li>
+      <li>Configura el modo híbrido y ejecuta la suite de tests del proyecto contra la HANA del trial.</li>
+      <li>Reduce la memoria de <code>srv</code> a 128 MB en <code>mta.yaml</code>, despliega y observa qué pasa. Restaura el valor.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="mod" id="m10">
+  <div class="modhead"><span class="modnum">10</span><h2>Operar el día a día</h2></div>
+  <p class="goal">Las convenciones y hábitos que distinguen a quien "usa BTP" de quien lo entiende.</p>
+  <h3>Landscape: dev, qa, prod</h3>
+  <p>El estándar es una subaccount por entorno, dentro de un directory por proyecto. Cada subaccount tiene su propia HANA, sus destinations apuntando al sistema correspondiente (S/4 de desarrollo, de calidad, productivo) y sus usuarios. Nunca compartas una instancia de HANA entre entornos. Los promocionan con Cloud Transport Management o con un pipeline de CI/CD que despliega el mismo <code>.mtar</code> en cada subaccount con parámetros distintos (<code>mtaext</code>).</p>
+  <h3>Costes</h3>
+  <ul>
+    <li>Lo que más cuesta en un proyecto CAP típico es <strong>SAP HANA Cloud</strong>. Se factura por hora encendida. En dev, muchos equipos la apagan por la noche.</li>
+    <li>Las instancias de Cloud Foundry se facturan por memoria asignada, no por uso. Un <code>srv</code> con 1 GB y dos instancias cuesta el doble que con 512 MB y una.</li>
+    <li>Antes de crear una instancia en la subaccount de la empresa, mira el plan en el <a href="https://discovery-center.cloud.sap">Discovery Center</a> y pregunta. En tu trial haz lo que quieras.</li>
+  </ul>
+  <h3>La CLI de BTP</h3>
+  <p>El cockpit tiene una hermana de línea de comandos, <code>btp</code>, que administra la parte de cuentas, entitlements y seguridad. No sustituye a <code>cf</code>, la complementa. Es la base para automatizar la creación de subaccounts o la asignación de roles.</p>
+  <pre><code>btp login --sso
+btp list accounts/subaccount
+btp target --subaccount &lt;id&gt;
+btp list security/role-collection
+btp assign security/role-collection "Bookshop_Admin" --to-user ruben@empresa.com --of-idp sap.default
+btp list accounts/entitlement</code></pre>
+  <h3>Hábitos</h3>
+  <ul>
+    <li>Nombra instancias y apps con prefijo de proyecto: <code>ventas-db</code>, <code>ventas-auth</code>, <code>ventas-srv</code>. El cockpit lista todo junto y sin prefijos es un caos.</li>
+    <li>Antes de tocar algo en una subaccount que no es tuya, mira la pestaña <strong>Events</strong> de la app o los <strong>Audit logs</strong>. Sabrás si alguien más está trabajando en ella.</li>
+    <li>Nunca copies un <code>clientsecret</code> de <code>VCAP_SERVICES</code> a un chat. Usa service keys con nombre y bórralas al terminar.</li>
+    <li>Cuando pidas acceso, pide un rol concreto: "Space Developer en el space dev de ventas-dev". Facilita la vida a quien administra.</li>
+    <li>Si tu empresa usa IAS, tu usuario en el cockpit puede aparecer dos veces: uno por el SAP ID Service y otro por el IAS corporativo. Las role collections se asignan a uno de los dos y el otro no las ve.</li>
+  </ul>
+</section>
+
+<section class="mod" id="m11">
+  <div class="modhead"><span class="modnum">11</span><h2>Plan de práctica de 4 semanas</h2></div>
+  <p class="goal">Una hora al día, con el trial en una pestaña y el cockpit de tu empresa en otra.</p>
+  <div class="week"><div class="w">Semana 1</div><ul>
+    <li>Módulos 00 a 04. Trial creado, herramientas instaladas, booster de CAP ejecutado.</li>
+    <li>Recorre cada menú del cockpit de tu empresa en modo lectura y anota qué servicios usa cada proyecto.</li>
+  </ul></div>
+  <div class="week"><div class="w">Semana 2</div><ul>
+    <li>Módulos 05 y 06. Despliega <code>bookshop</code> en el trial. Practica <code>cf logs</code>, <code>cf env</code>, parar y arrancar.</li>
+    <li>Abre el <code>mta.yaml</code> de un proyecto real y mapea cada resource a su instancia en el cockpit.</li>
+  </ul></div>
+  <div class="week"><div class="w">Semana 3</div><ul>
+    <li>Módulos 07 y 08. Roles, role collections, destination a Northwind.</li>
+    <li>Pide a un compañero que te explique cómo está montado el IdP y el Cloud Connector de la empresa, con el módulo 07 y 08 leídos.</li>
+  </ul></div>
+  <div class="week"><div class="w">Semana 4</div><ul>
+    <li>Módulos 09 y 10. Rompe y arregla el <code>bookshop</code>. Monta el modo híbrido y ejecuta tests contra HANA.</li>
+    <li>Reto final: dado un fallo real de un proyecto de la empresa (un 403, una app caída), localiza la causa usando solo el cockpit y la CLI, y escribe qué pantallas usaste.</li>
+  </ul></div>
+</section>
+
+<section class="mod" id="chuleta">
+  <div class="modhead"><span class="modnum">—</span><h2>Chuleta de comandos</h2></div>
+  <pre><code><span class="c"># Cloud Foundry</span>
+cf login -a &lt;api-endpoint&gt; --sso       cf target -o &lt;org&gt; -s &lt;space&gt;
+cf apps / cf app &lt;app&gt;                 cf logs &lt;app&gt; [--recent]
+cf env &lt;app&gt;                           cf services / cf service &lt;instancia&gt;
+cf create-service-key &lt;inst&gt; &lt;key&gt;     cf service-key &lt;inst&gt; &lt;key&gt;
+cf start / stop / restart / restage    cf scale &lt;app&gt; -i N -m 512M
+cf deploy &lt;mtar&gt;                       cf undeploy &lt;mta-id&gt; --delete-services
+cf ssh &lt;app&gt;                           cf events &lt;app&gt;
+
+<span class="c"># CAP</span>
+cds add hana,xsuaa,approuter,mta       mbt build
+cds bind -2 &lt;instancia&gt;                cds watch --profile hybrid
+cds bind --exec -- npm test            cds import &lt;metadata.edmx&gt;
+
+<span class="c"># BTP</span>
+btp login --sso                        btp list accounts/subaccount
+btp target --subaccount &lt;id&gt;           btp list security/role-collection
+btp assign security/role-collection &lt;rc&gt; --to-user &lt;mail&gt; --of-idp sap.default</code></pre>
+</section>
+
+<section class="mod" id="glosario">
+  <div class="modhead"><span class="modnum">—</span><h2>Glosario</h2></div>
+  <dl class="gloss">
+    <dt>Approuter</dt><dd>App Node.js de SAP que hace de puerta de entrada: gestiona el login con XSUAA y reenvía peticiones a tu <code>srv</code> y a las UIs.</dd>
+    <dt>Binding</dt><dd>Enlace entre una app y una instancia de servicio. Inyecta las credenciales en <code>VCAP_SERVICES</code>.</dd>
+    <dt>Booster</dt><dd>Asistente del cockpit que configura una subaccount para un escenario en pocos pasos.</dd>
+    <dt>Buildpack</dt><dd>Receta que Cloud Foundry usa para convertir tu código en un contenedor ejecutable.</dd>
+    <dt>Cloud Connector</dt><dd>Agente instalado on-premise que abre un túnel seguro hacia una subaccount.</dd>
+    <dt>Destination</dt><dd>Conexión con nombre a un sistema externo, con URL y autenticación, gestionada en la subaccount.</dd>
+    <dt>Directory</dt><dd>Carpeta para agrupar subaccounts dentro del global account.</dd>
+    <dt>Entitlement</dt><dd>Derecho a usar un servicio con un plan concreto, asignado a una subaccount.</dd>
+    <dt>HDI container</dt><dd>Esquema aislado dentro de una instancia de HANA Cloud, gestionado por el HANA Deployment Infrastructure.</dd>
+    <dt>IAS</dt><dd>SAP Cloud Identity Services, Identity Authentication. El proveedor de identidad corporativo que las empresas conectan a BTP.</dd>
+    <dt>MTA / mtar</dt><dd>Multi-Target Application. El descriptor <code>mta.yaml</code> y el archivo <code>.mtar</code> que empaqueta apps y servicios para desplegarlos juntos.</dd>
+    <dt>Org / Space</dt><dd>Unidades de Cloud Foundry. Una org por subaccount; los spaces agrupan apps e instancias dentro de la org.</dd>
+    <dt>Plan</dt><dd>Variante de un servicio con distintas capacidades y precio: <code>lite</code>, <code>standard</code>, <code>hdi-shared</code>, <code>application</code>.</dd>
+    <dt>Role collection</dt><dd>Conjunto de roles que se asigna a un usuario. La unidad de asignación en el cockpit.</dd>
+    <dt>Route</dt><dd>URL pública asignada a una app de Cloud Foundry.</dd>
+    <dt>Service key</dt><dd>Credenciales de una instancia para usarla desde fuera de la plataforma.</dd>
+    <dt>Subaccount</dt><dd>Unidad de trabajo de BTP, ligada a una región, con usuarios, servicios y entornos propios.</dd>
+    <dt>VCAP_SERVICES</dt><dd>Variable de entorno con las credenciales de todos los servicios ligados a una app.</dd>
+    <dt>XSUAA</dt><dd>Servicio de autorización de BTP basado en OAuth2. Emite tokens con los scopes del usuario.</dd>
+  </dl>
+</section>
+
+<section class="mod" id="recursos">
+  <div class="modhead"><span class="modnum">—</span><h2>Recursos</h2></div>
+  <ul>
+    <li><a href="https://account.hanatrial.ondemand.com">Cuenta trial de BTP</a> y <a href="https://cockpit.btp.cloud.sap">cockpit productivo</a>.</li>
+    <li><a href="https://help.sap.com/docs/btp">Documentación oficial de BTP</a>. La sección "Getting Started" y "Account Model" cubren los módulos 03 y 04 con capturas actualizadas.</li>
+    <li><a href="https://cap.cloud.sap">Documentación de CAP (capire)</a>. En especial "Deploy to Cloud Foundry" y "Hybrid Testing".</li>
+    <li><a href="https://developers.sap.com/tutorial-navigator.html">Tutoriales de developers.sap.com</a>. Busca los grupos "Get Started with SAP BTP" y "Build a Business Application Using CAP for Node.js".</li>
+    <li><a href="https://learning.sap.com">SAP Learning</a>. El learning journey "Discovering SAP Business Technology Platform" es gratuito y es el complemento natural de este curso.</li>
+    <li><a href="https://discovery-center.cloud.sap">Discovery Center</a>. Catálogo de servicios con planes, precios y regiones disponibles.</li>
+    <li><a href="https://help.sap.com/docs/btp/btp-cli-command-reference">Referencia de la CLI de BTP</a> y <a href="https://docs.cloudfoundry.org/cf-cli/">de la CLI de Cloud Foundry</a>.</li>
+    <li><a href="https://github.com/SAP-samples/cloud-cap-samples">cloud-cap-samples</a>. El <code>bookshop</code> y ejemplos más completos listos para desplegar.</li>
+  </ul>
+  <p>La interfaz del cockpit cambia con frecuencia. Si un menú no está exactamente donde dice este curso, busca el mismo nombre en el buscador del cockpit o en la documentación oficial.</p>
+</section>
+
+<footer>Curso preparado el 2 de septiembre de 2026. Basado en la documentación pública de SAP BTP y SAP CAP.</footer>
+</main>
+</div>
