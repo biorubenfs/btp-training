@@ -156,6 +156,34 @@ compara con el `#DI`, y si la tabla existe con otra columna, hace el `ALTER`
 esté listada en `undeploy.json` (o uses `--auto-undeploy`), para que no
 pierdas datos por accidente.
 
+### Qué crea de verdad un contenedor
+
+Consultado en `SYS.SCHEMAS` como `DBADMIN` justo después de
+`cf create-service hana hdi-shared test-hdi` y de una `cf create-service-key`
+(contenedor de prueba creado en el trial el 2026-11-15):
+
+| Esquema                       | Creado por      | Qué es                                                                                   |
+|-------------------------------|-----------------|------------------------------------------------------------------------------------------|
+| `BA43A1B0…`                   | la instancia    | El esquema de **datos**: aquí van las tablas y vistas que despliega CAP                   |
+| `BA43A1B0…#DI`                | la instancia    | El esquema de **despliegue**: los ficheros desplegados, su estado y los procedimientos HDI |
+| `BA43A1B0…#OO`                | la instancia    | El **object owner**: el usuario técnico dueño de todas las tablas del esquema de datos     |
+| `BA43A1B0…_<sufijo>_DT`       | la service key  | Usuario *design time*, el que usa el deployer. Su esquema personal está vacío              |
+| `BA43A1B0…_<sufijo>_RT`       | la service key  | Usuario *runtime*, el que usa la app. Su esquema personal está vacío                       |
+
+Tres cosas que se deducen de la tabla:
+
+1. El nombre del esquema **no** es el de la instancia (`test-hdi`,
+   `bookshop-db`), sino un identificador hexadecimal generado. El nombre de
+   la instancia solo existe en Cloud Foundry.
+2. Los usuarios `_DT` y `_RT` nacen con **cada key o binding**, no con el
+   contenedor. Dos keys = dos parejas de usuarios con sufijos distintos. Al
+   borrar la key desaparecen, y las tablas siguen intactas. Aparecen como
+   esquemas porque en HANA cada usuario tiene automáticamente un esquema con
+   su nombre (`DBADMIN` también).
+3. `HAS_PRIVILEGES` es `FALSE` para `DBADMIN` en los cinco. El contenedor es
+   un recinto cerrado: se entra con las credenciales de la key, no con las
+   del administrador.
+
 ## 7.6 Cómo nace el contenedor al desplegar
 
 Una app CAP necesita como mínimo un contenedor HDI, y las tablas van en su
@@ -236,9 +264,24 @@ Service broker error: Service broker hana-broker failed with: no HANA database f
 Para ver las tablas de verdad hay dos caminos.
 
 **Como administrador**, con `DBADMIN`: HANA Cloud Central › instancia › ⋮ ›
-Open in SAP HANA Database Explorer. Verás **todos** los esquemas, incluidos
-los `BOOKSHOP_DB_1` y `BOOKSHOP_DB_1#DI`. Puedes leer, pero no debes escribir
-en ellos: HDI no se enteraría y el siguiente deploy podría fallar.
+Open in SAP HANA Database Explorer. Cuidado con una trampa: el navegador de
+objetos (Catalog › Schemas y el buscador *Search Schemas*) **solo lista los
+esquemas sobre los que tu usuario tiene privilegios**, y `DBADMIN` no los
+tiene sobre los contenedores. Buscar ahí el esquema de la key no devuelve
+nada. Para ver que existen hay que preguntar al catálogo del sistema desde la
+consola SQL (icono *SQL* arriba a la izquierda):
+
+```sql
+SELECT SCHEMA_NAME, SCHEMA_OWNER, HAS_PRIVILEGES, CREATE_TIME
+FROM SYS.SCHEMAS
+ORDER BY CREATE_TIME DESC;
+```
+
+Los `_SYS_*`, `SAP_*` y `BROKER_*` son de sistema. Cada grupo con el mismo
+prefijo hexadecimal (`XXXX`, `XXXX#DI`, `XXXX#OO` y los `_DT`/`_RT`) es un
+contenedor. `DBADMIN` ve que están, pero no puede abrirlos ni leer sus tablas.
+Y aunque se diera privilegios a sí mismo, no debe escribir en ellos: HDI no
+se enteraría y el siguiente deploy podría fallar.
 
 **Como la app**, con el usuario del contenedor: crea una service key de
 `bookshop-db` y añade la conexión al Database Explorer con esas credenciales.

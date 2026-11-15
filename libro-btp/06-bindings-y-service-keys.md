@@ -173,16 +173,37 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   {
     "Name": "NORTHWIND",
     "Type": "HTTP",
+    "Description": "",
     "URL": "https://services.odata.org",
-    "Authentication": "NoAuthentication",
-    "ProxyType": "Internet"
+    "ProxyType": "Internet",
+    "Authentication": "NoAuthentication"
   }
 ]
 ```
 
-El token es un JWT. Si lo decodificas (`echo $TOKEN | cut -d. -f2 | base64 -d`)
-verás `client_id`, `zid` (el tenant), `scope` y la caducidad `exp`,
-normalmente 12 horas.
+Antes de crear la destination en el cockpit, la misma llamada devuelve `[]`:
+la instancia y la key son solo la puerta de acceso, las destinations se
+crean aparte (capítulo 9).
+
+El token es un JWT. Decodificado:
+
+```bash
+echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq '{client_id, zid, scope, exp: (.exp | todate)}'
+```
+
+```json
+{
+  "client_id": "sb-clonef04e…!b742437|destination-xsappname!b62",
+  "zid": "1be714d1-…",
+  "scope": ["uaa.resource"],
+  "exp": "2026-11-16T04:27:29Z"
+}
+```
+
+`client_id` identifica a la instancia del servicio, no a una persona. `zid`
+es el id de la subcuenta (tenant). `scope` solo lleva `uaa.resource`: el
+token sirve para hablar con el servicio, no transporta permisos de usuario.
+`exp` son 12 horas desde que se pidió.
 
 CAP y las librerías de SAP (`@sap/xssec`, `@sap-cloud-sdk/connectivity`) hacen
 esto por ti. Conviene saberlo para depurar: un 401 en el paso 3 significa

@@ -5,33 +5,143 @@ una API externa o con otra app sin URLs ni credenciales en el código.
 
 ## 9.1 Qué es una destination
 
-Una **destination** es una conexión con nombre que vive en la subcuenta: URL,
-tipo de autenticación, credenciales y propiedades adicionales. Tu código pide
-"la destination `S4_SALES`" y el Destination Service le devuelve la URL y un
-token o cabecera de autenticación ya resueltos.
+Una app en BTP casi nunca vive sola: llama a un S/4HANA, a una API externa o
+a otra app tuya. Para cada una de esas llamadas necesita una URL, un tipo de
+autenticación y unas credenciales. Una **destination** es exactamente eso,
+guardado con un nombre en la subcuenta:
+
+```
+Nombre:          S4_SALES
+URL:             https://s4dev.acme.com
+Authentication:  OAuth2ClientCredentials
+Client ID:       sb-ventas-…
+Client Secret:   ********
+Token URL:       https://acme.authentication.eu10.hana.ondemand.com/oauth/token
+```
+
+Tu código no lleva ni la URL ni las credenciales. Pide "dame `S4_SALES`" y
+el **Destination Service** le devuelve la URL y una cabecera de autenticación
+ya resuelta.
 
 ```
   bookshop-srv                 Destination Service          Sistema destino
       │                              │                             │
-      │ "dame NORTHWIND"             │                             │
-      │ ────────────────────────────▶│                             │
-      │ { URL, Authentication,       │                             │
-      │   authTokens: [...] }        │                             │
+      │ "dame S4_SALES"              │                             │
+      │ ────────────────────────────▶│  (pide el token al S/4      │
+      │ { URL, Authentication,       │   con el client id/secret   │
+      │   authTokens: [...] }        │   guardados en la entrada)  │
       │ ◀────────────────────────────│                             │
       │                                                            │
-      │ GET https://services.odata.org/... (+ cabecera de auth)    │
+      │ GET https://s4dev.acme.com/… + Authorization: Bearer …     │
       │ ──────────────────────────────────────────────────────────▶│
 ```
 
-Ventajas: la misma app funciona en dev, qa y prod apuntando a sistemas
-distintos (cada subcuenta tiene su propia `S4_SALES`), y las credenciales no
-están ni en el código ni en variables de entorno de la app.
+### Por qué no basta con una variable de entorno
 
-> **Analogía.** Un pool de conexiones JNDI configurado en el servidor de
-> aplicaciones, o un fichero de configuración por entorno, pero gestionado
-> por la plataforma y con OAuth2 incorporado.
+Una variable de entorno con la URL funcionaría. Tres cosas que no te da:
 
-## 9.2 Crear una destination
+1. **Un valor por entorno sin tocar código.** La subcuenta `dev` tiene su
+   `S4_SALES` apuntando al S/4 de desarrollo; la de `prod`, al real. La misma
+   app, desplegada en cada subcuenta, llama al sistema correcto.
+2. **Credenciales fuera de la app.** Las guarda la plataforma, cifradas. Un
+   administrador las rota sin redesplegar nada, y quien haga `cf env` a la app
+   no ve el secreto del S/4.
+3. **La autenticación hacia el destino la hace el servicio.** Si la entrada es
+   OAuth2, el servicio pide el token al sistema destino y lo devuelve hecho.
+   Si es *principal propagation*, convierte al usuario que está usando tu app
+   en una identidad válida en el S/4. Si el sistema está dentro de la red de
+   la empresa, lo enruta por el túnel del Cloud Connector. Todo eso a mano
+   son cientos de líneas y varios errores difíciles.
+
+> **Analogía.** Un gestor de secretos y conexiones con nombre, como AWS
+> Secrets Manager o un pool JNDI del servidor de aplicaciones, pero con la
+> autenticación hacia el destino incorporada.
+
+## 9.2 Destination y Destination Service: dos cosas con el mismo nombre
+
+Aquí está la confusión más habitual, y conviene cortarla pronto. Hay dos
+cosas distintas que se llaman parecido:
+
+| Cosa                                       | Dónde se crea                                                  | Qué es                                                                              |
+|--------------------------------------------|----------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| **Las destinations**                       | Subcuenta › Conectividad › Destinos                            | Las entradas de configuración en sí (`NORTHWIND`, `S4_SALES`). Las crea un admin   |
+| **La instancia del Destination Service**   | Instancias y suscripciones, servicio `destination`, plan `lite` | La **puerta de acceso** a esas entradas para una app concreta. No contiene nada    |
+
+La instancia no contiene destinations. Es un cliente OAuth2 registrado que
+tiene permiso para **leer** las destinations de la subcuenta por API. Por eso,
+recién creada la instancia y su key, la API devuelve una lista vacía:
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$URI/destination-configuration/v1/subaccountDestinations"
+```
+
+```
+[]
+```
+
+Y después de crear `NORTHWIND` en Conectividad › Destinos, **sin tocar la
+instancia ni la key**, la misma llamada devuelve:
+
+```json
+[
+  {
+    "Name": "NORTHWIND",
+    "Type": "HTTP",
+    "Description": "",
+    "URL": "https://services.odata.org",
+    "ProxyType": "Internet",
+    "Authentication": "NoAuthentication"
+  }
+]
+```
+
+(Salida real del trial, 2026-11-15.) Los dos pasos son independientes: el
+destino se puede crear sin que exista ninguna instancia, y la instancia sin
+que exista ningún destino. El orden da igual.
+
+### Para qué sirve entonces la service key
+
+La API del Destination Service no es pública: hay que identificarse. La
+instancia es el "usuario" OAuth2 y la key son sus credenciales en un fichero,
+el `clientid` y el `clientsecret` más la `url` de dónde pedir el token y la
+`uri` de la API (capítulo 6). El flujo de un programa que quiera leer una
+destination es siempre este:
+
+```
+1. Leo clientid, clientsecret, url y uri (de la key o del binding)
+2. Mando clientid + clientsecret a `url` y me dan un token
+3. Con el token pido a `uri` "dame NORTHWIND"
+4. Me devuelven la URL del destino (y su cabecera de auth, si la tiene)
+5. Llamo al destino
+```
+
+Quién necesita la key y quién no:
+
+| Quién llama al Destination Service              | Cómo le llegan las credenciales                        | ¿Key? |
+|-------------------------------------------------|--------------------------------------------------------|-------|
+| Una app desplegada en Cloud Foundry             | Binding: `cf deploy` las pone en `VCAP_SERVICES`       | No    |
+| Tu portátil: `curl`, Postman, `cds watch --profile hybrid` | Las copias tú de la key                     | Sí    |
+| Un sistema fuera de BTP                         | Alguien le pasa los cuatro valores de la key           | Sí    |
+
+En un proyecto CAP normal la instancia existe, está ligada a la app y **no
+tiene ninguna key**. La key solo aparece cuando alguien de fuera de Cloud
+Foundry quiere entrar.
+
+### Dos autenticaciones, no una
+
+Cuando tu app llama a un S/4 a través de una destination hay dos
+autenticaciones distintas, y conviene no mezclarlas:
+
+| Para hablar con            | Credenciales                                    | De dónde salen                                                  |
+|----------------------------|-------------------------------------------------|-----------------------------------------------------------------|
+| El Destination Service     | `clientid` y `clientsecret` de la instancia     | Del binding o de la key                                         |
+| El S/4 (el destino)        | Usuario del S/4, token OAuth del S/4, certificado… | Guardadas **dentro** de la destination. El servicio las resuelve y tu código nunca las ve en claro |
+
+Con la key tienes solo la primera. La segunda vive en el destino, y ese es el
+valor de todo el mecanismo.
+
+## 9.3 Crear una destination
 
 > **Cockpit:** Subcuenta › Conectividad › Destinos › Nuevo destino
 > (*Connectivity › Destinations › New Destination*).
@@ -47,7 +157,7 @@ Los campos que importan:
 | Authentication        | `NoAuthentication`, `BasicAuthentication`, `OAuth2ClientCredentials` (servicio a servicio), `OAuth2SAMLBearerAssertion` y `PrincipalPropagation` (el usuario final se propaga al destino con su identidad) |
 | Additional Properties | Pares clave-valor. Habituales en SAP: `HTML5.DynamicDestination=true`, `WebIDEEnabled=true`, `sap-client=100` |
 
-Ejemplo para el ejercicio, un OData público de pruebas:
+**Ejemplo 1, un OData público sin autenticación** (el del ejercicio):
 
 ```
 Name:            NORTHWIND
@@ -57,11 +167,33 @@ Proxy Type:      Internet
 Authentication:  NoAuthentication
 ```
 
+**Ejemplo 2, otra app tuya protegida con XSUAA.** Es el caso de "una app CAP
+llama a otra app" del capítulo 6.6. Los cuatro valores que allí se copiaban a
+mano a variables de entorno van aquí, y el código de la app que llama se
+queda sin ninguno:
+
+```
+Name:            APP_PEDIDOS
+Type:            HTTP
+URL:             https://pedidos-srv.cfapps.us10.hana.ondemand.com
+Proxy Type:      Internet
+Authentication:  OAuth2ClientCredentials
+Client ID:       sb-pedidos!t12345          ← clientid de la XSUAA de pedidos
+Client Secret:   ********                   ← clientsecret de esa XSUAA
+Token Service URL: https://7b6c2113trial.authentication.us10.hana.ondemand.com/oauth/token
+```
+
+Cuando bookshop pida `APP_PEDIDOS`, el Destination Service pedirá el token a
+la XSUAA de pedidos con ese client id y secret, y se lo devolverá a bookshop
+ya hecho en `authTokens`. Cambiar la URL de pedidos o rotar su secreto es
+editar esta entrada, sin redesplegar bookshop.
+
 > **Trampa.** El botón *Comprobar conexión* (*Check Connection*) solo prueba
 > que el host se alcanza. No valida credenciales ni rutas. Un "200 OK" ahí no
 > garantiza nada más que DNS y red.
 
-Con la API REST, usando la service key del capítulo 6:
+Leer una destination concreta con la API REST, usando la service key del
+capítulo 6:
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
@@ -81,11 +213,14 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 }
 ```
 
+> **Pendiente de validar.** Salida reconstruida de la documentación; la de
+> `subaccountDestinations` del apartado 9.2 sí es real.
+
 Si la destination tuviera `OAuth2ClientCredentials`, la respuesta incluiría
 `authTokens` con un token ya pedido al sistema destino. Eso es lo que te
 ahorra el servicio.
 
-## 9.3 Destinations de subcuenta y de instancia
+## 9.4 Destinations de subcuenta y de instancia
 
 Hay dos ámbitos:
 
@@ -98,7 +233,7 @@ Las de subcuenta son las normales. Las de instancia se usan cuando una app
 quiere sus destinations privadas. En la respuesta de la API, `owner` dice
 cuál es.
 
-## 9.4 Cloud Connector
+## 9.5 Cloud Connector
 
 Para llegar a sistemas dentro de la red de la empresa (un S/4HANA on-premise,
 una base de datos interna) hace falta el **Cloud Connector**: un programa que
@@ -137,7 +272,7 @@ Lo que necesitas saber como desarrollador:
 > instalar uno en el portátil para practicar, pero no es necesario para el
 > objetivo del libro.
 
-## 9.5 Consumir una destination desde CAP
+## 9.6 Consumir una destination desde CAP
 
 CAP consume servicios externos en tres pasos:
 
@@ -210,7 +345,38 @@ hace que use la destination real desde tu portátil.
 > **Pendiente de validar.** Los pasos de `cds import` y la configuración de
 > `[production]` se ejecutarán en el ejercicio de este capítulo.
 
-## 9.6 Trampas
+### Los dos patrones que verás en proyectos reales
+
+**Patrón A: la app lee una destination.** El `mta.yaml` declara una instancia
+de `destination` y la liga al módulo de la app. Nadie crea keys. Al
+desplegar, las credenciales entran en `VCAP_SERVICES`, el SAP Cloud SDK las
+encuentra solo y resuelve la destination por nombre. Es el patrón correcto y
+el que produce `cds add destination`.
+
+**Patrón B: la app lleva una key copiada a mano.** Para llamar a otra app
+protegida con XSUAA, alguien crea una service key de la instancia XSUAA de
+esa app y copia `clientid`, `clientsecret`, `url` y la URL de la app a
+variables de entorno de la que llama. El código pide el token y lo manda
+como Bearer. Funciona, pero hereda todos los problemas de las keys: un
+secreto real que no caduca, duplicado, que alguien tiene que rotar y que, si
+se borra la key, deja la app rota sin aviso.
+
+| | Patrón B (key a mano)                     | Patrón A con destination `OAuth2ClientCredentials` |
+|---|-------------------------------------------|----------------------------------------------------|
+| Dónde están las credenciales de la otra app | Variables de entorno de tu app | Dentro de la destination, en la subcuenta |
+| Quién pide el token a la otra app | Tu código | El Destination Service |
+| Qué tiene tu app en `VCAP_SERVICES` | Nada relacionado | El binding de `destination` |
+| Cambiar la URL o rotar el secreto | Redesplegar o editar env | Editar la destination en el cockpit |
+
+Los dos son el mismo mecanismo. En A lo hace la plataforma; en B lo haces tú
+con las piezas sueltas. Si te encuentras B en un proyecto, el ejemplo 2 del
+apartado 9.3 es la migración.
+
+## 9.7 Trampas
+
+> **Trampa.** Crear la instancia de `destination` y su key, llamar a la API y
+> ver `[]`. No falta nada en la instancia: faltan las destinations, que se
+> crean aparte en Conectividad › Destinos.
 
 > **Trampa.** *Check Connection* en verde y la app falla. El botón no valida
 > credenciales. Prueba con la API o con la app.
@@ -231,6 +397,10 @@ hace que use la destination real desde tu portátil.
 
 - Destination = conexión con nombre en la subcuenta: URL + autenticación +
   propiedades. El código pide el nombre, la plataforma resuelve el resto.
+- La instancia del Destination Service no contiene destinations: es la puerta
+  para leerlas. Binding para la app en CF, key solo para entrar desde fuera.
+- Dos autenticaciones: la de tu app contra el Destination Service (key o
+  binding) y la del destino, que vive dentro de la destination.
 - `Internet` para lo público, `OnPremise` para lo interno vía Cloud Connector.
 - *Check Connection* no valida credenciales.
 - CAP: `cds import` → `cds.requires.<nombre>` → `credentials.destination` en
@@ -239,8 +409,9 @@ hace que use la destination real desde tu portátil.
 
 ## Ejercicio
 
-1. Crea la destination `NORTHWIND` del apartado 9.2. Léela con la API REST
-   usando una service key de una instancia `destination/lite`.
+1. Crea una instancia `destination/lite` con una key, pide un token y llama a
+   `subaccountDestinations`: `[]`. Crea la destination `NORTHWIND` del
+   apartado 9.3 y repite la llamada. (Hecho en el trial el 2026-11-15.)
 2. En bookshop, importa Northwind con `cds import`, configura el servicio
    externo y expón una entidad `Suppliers` que lo use. Despliega y llámala.
 3. Cambia la URL de la destination a algo erróneo sin redesplegar y observa

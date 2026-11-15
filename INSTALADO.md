@@ -95,6 +95,24 @@ Herramientas instaladas para el curso de BTP, con el comando usado y cómo desin
   pipx uninject mkdocs mkdocs-material
   ```
 
+### 2026-11-15 · Autocompletado de cf CLI en bash
+
+- **Para qué:** completar con Tab los comandos y flags de `cf` (`cf create-ser<Tab>`, `cf push --no-<Tab>`). No completa nombres de apps o instancias, solo comandos y opciones.
+- **Cómo funciona:** el propio binario `cf` genera las sugerencias si se le llama con `GO_FLAGS_COMPLETION=1`. El script solo conecta eso con bash. Es el script oficial del repositorio `cloudfoundry/cli-ci` (`ci/installers/completion/cf8`), que el paquete `.deb` instala en `/usr/share/bash-completion/completions/`; como aquí cf se instaló como binario suelto, se copió a mano al directorio de usuario.
+- **Comando:**
+  ```bash
+  mkdir -p ~/.local/share/bash-completion/completions
+  curl -sL -o ~/.local/share/bash-completion/completions/cf \
+    https://raw.githubusercontent.com/cloudfoundry/cli-ci/main/ci/installers/completion/cf8
+  ```
+  bash-completion (ya activo en `~/.bashrc`) lo carga solo la primera vez que se pulsa Tab tras `cf`. En las terminales abiertas antes de instalarlo hace falta abrir una nueva o ejecutar `source ~/.local/share/bash-completion/completions/cf`.
+- **Tipo:** fichero de shell en el home, sin sudo.
+- **Ubicación:** `~/.local/share/bash-completion/completions/cf`
+- **Desinstalar:**
+  ```bash
+  rm ~/.local/share/bash-completion/completions/cf
+  ```
+
 ## Pendientes (propuestas, aún no instaladas)
 
 - **btp CLI**: binario descargado de tools.hana.ondemand.com (módulo 10).
@@ -108,7 +126,8 @@ npm uninstall -g @sap/cds-dk mbt
 # Tema Material de MkDocs (mkdocs en sí ya estaba antes del curso)
 pipx uninject mkdocs mkdocs-material
 
-# cf CLI (incluye sus plugins y configuración)
+# cf CLI (incluye sus plugins y configuración) y su autocompletado
 rm ~/.local/bin/cf ~/.local/bin/cf8
 rm -rf ~/.cf
+rm ~/.local/share/bash-completion/completions/cf
 ```

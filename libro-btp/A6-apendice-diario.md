@@ -11,30 +11,33 @@ reproducir el camino.
 | 2026-11-13 | 5         | El booster de CAP ya no existe en el trial. Ejecutado "SAP HANA Cloud administration tools" → suscripción a HANA Cloud Central + role collection *SAP HANA Cloud Administrator* |
 | 2026-11-13 | 5, 6      | Instancia `dest-test` (`destination`/`lite`) + key `key1` creadas desde el cockpit, JSON inspeccionado (capítulo 6), borradas en orden. Cockpit en castellano |
 | 2026-11-13 | 7         | Creación de la instancia SAP HANA Cloud `hana-trial` lanzada desde HANA Cloud Central, con "Allow all IPs" y mapping a la org |
-| 2026-11-14 | —         | Proyecto `bookshop` generado con cds-dk 10.2.1 para capturar los ficheros reales de los capítulos 10 y 11. Primera versión del libro |
+| 2026-11-14 | —         | Primera versión del libro. El proyecto `bookshop` de los capítulos 10 y 11 lo generó el asistente en un directorio temporal con cds-dk 10.2.1 solo para capturar los ficheros reales; no se conservó ni se desplegó |
+| 2026-11-15 | 6, 9      | Instancia HANA arrancada. `dest-dev` + `key1` creadas dos veces desde el cockpit (la primera borrada en orden). Token OAuth2 pedido con `curl`, API de destinations llamada antes (`[]`) y después de crear `NORTHWIND` en el cockpit, JWT decodificado. Autocompletado de `cf` instalado (ver `INSTALADO.md`) |
+| 2026-11-15 | 7         | Mapping (org + space `dev`) y *Allow all IPs* confirmados. Contenedor de prueba `test-hdi` (`hana`/`hdi-shared`) creado por CLI, borrado y recreado desde el cockpit, con key. Esquemas reales consultados en `SYS.SCHEMAS` como `DBADMIN`: cinco por contenedor (datos, `#DI`, `#OO`, `_DT`, `_RT`), `HAS_PRIVILEGES=FALSE`. Capítulo 7.5 y 7.8 corregidos con ello |
 
 ## Pendiente
 
 Por orden del curso:
 
-1. Confirmar la instancia HANA *Running*, mapping y conexiones (capítulo 7).
+1. ~~Confirmar la instancia HANA *Running*, mapping y conexiones (capítulo 7).~~ Hecho el 15. Falta el punto 3 del ejercicio (entrar al contenedor con su key) tras desplegar bookshop.
 2. Desplegar bookshop en `dev` (capítulo 11) y sustituir las salidas marcadas
    *Pendiente de validar* por las reales.
 3. Scope `Admin`, role collection y prueba de 403 (capítulo 8).
-4. Destination `NORTHWIND` y `cds import` (capítulo 9).
+4. `cds import` contra `NORTHWIND` (capítulo 9). La destination ya está creada.
 5. Modo híbrido y tests contra HANA (capítulo 12).
 6. Romper y diagnosticar (capítulo 13).
-7. Space `prod`, `.mtaext`, `btp` CLI (capítulo 14).
+7. Space `prod`, `.mtaext`, `btp` CLI (capítulo 14). Antes, ampliar el mapping de HANA a `prod`.
 
 ## Estado del entorno
 
-| Elemento                | Estado a 2026-11-14                                        |
+| Elemento                | Estado a 2026-11-15                                        |
 |-------------------------|------------------------------------------------------------|
 | Subcuenta               | `trial`, `us10`, subdominio `7b6c2113trial`                |
 | Org / space             | `7b6c2113trial` / `dev`                                    |
 | Apps desplegadas        | Ninguna                                                    |
-| Instancias en el space  | Ninguna                                                    |
-| HANA Cloud              | `hana-trial`, creación lanzada el 13; comprobar estado     |
+| Instancias en el space  | `dest-dev` (`destination`/`lite`) con key `key1`; `test-hdi` (`hana`/`hdi-shared`) con key `key1`, por borrar |
+| HANA Cloud              | `hana-trial`, arrancada el 15. Mapping confirmado **solo al space `dev`** (org + space): para el space `prod` del capítulo 14 habrá que añadir otro mapping o dejar el Environment Group vacío |
 | Suscripciones           | SAP HANA Cloud (`tools`)                                   |
+| Destinations            | `NORTHWIND` (HTTP, Internet, NoAuthentication)             |
 | Role collections propias| *SAP HANA Cloud Administrator* asignada                    |
 | `btp` CLI               | No instalada                                               |
