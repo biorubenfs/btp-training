@@ -17,6 +17,7 @@ reproducir el camino.
 | 2026-11-16 | 10        | Handler `srv/cat-service.ts` (`after READ` de Books, añade "(en oferta)" si `stock > 100`) probado con `cds-tsx watch` contra `/catalog/Books` y commiteado. Capítulo 10 cerrado |
 | 2026-11-16 | 11        | `cds add hana,xsuaa,approuter,mta` en `bookshop-cap`. `mta.yaml` idéntico al del libro. Comprobado que `cds add` no instala las dependencias nuevas (`@cap-js/hana` ausente de `node_modules`) y que `default-env.json` del `.gitignore` oculta el de `.deploy/app-router`. Sección 11.2 nueva con el paso a paso |
 | 2026-11-16 | 11        | `mbt build` correcto: `gen/srv/srv/cat-service.js` compilado, `gen/db` con tablas, vistas y outbox, `.mtar` de 13 MB. `engines ^24` lo escribe `cds build` en los `package.json` de `gen/`, no está en el del proyecto. Sección 11.5 con la salida real |
+| 2026-11-16 | 11        | Primer `cf deploy` de bookshop en `dev`, sin errores. Instancias `bookshop-db` y `bookshop-auth` creadas por el deploy service; tarea del deployer `SUCCEEDED` (contenedor `FE77BBFE…`); `srv` con Node 24.22.1, HANA y auth `xsuaa`; `srv` sin token 401; approuter responde 200 con redirección por script a XSUAA. Visto el `warn` del outbox por arrancar `srv` antes que el deployer. Secciones 11.6 y 11.7 con las salidas reales |
 | 2026-11-15 | 7         | Mapping (org + space `dev`) y *Allow all IPs* confirmados. Contenedor de prueba `test-hdi` (`hana`/`hdi-shared`) creado por CLI, borrado y recreado desde el cockpit, con key. Esquemas reales consultados en `SYS.SCHEMAS` como `DBADMIN`: cinco por contenedor (datos, `#DI`, `#OO`, `_DT`, `_RT`), `HAS_PRIVILEGES=FALSE`. Capítulo 7.5 y 7.8 corregidos con ello |
 
 ## Pendiente
@@ -38,8 +39,8 @@ Por orden del curso:
 |-------------------------|------------------------------------------------------------|
 | Subcuenta               | `trial`, `us10`, subdominio `7b6c2113trial`                |
 | Org / space             | `7b6c2113trial` / `dev`                                    |
-| Apps desplegadas        | Ninguna. `bookshop-cap` solo en local, repo `biorubenfs/bookshop-cap` |
-| Instancias en el space  | `dest-dev` (`destination`/`lite`) con key `key1`; `test-hdi` (`hana`/`hdi-shared`) con key `key1`, por borrar |
+| Apps desplegadas        | MTA `bookshop` 1.0.0 en `dev`: `bookshop-srv`, `bookshop` (approuter), `bookshop-db-deployer` (stopped). Repo `biorubenfs/bookshop-cap` |
+| Instancias en el space  | `dest-dev` (`destination`/`lite`) con key `key1`; `test-hdi` (`hana`/`hdi-shared`) con key `key1`, por borrar; `bookshop-db` (`hana`/`hdi-shared`) y `bookshop-auth` (`xsuaa`/`application`), creadas por la MTA |
 | HANA Cloud              | `hana-trial`, arrancada el 15. Mapping confirmado **solo al space `dev`** (org + space): para el space `prod` del capítulo 14 habrá que añadir otro mapping o dejar el Environment Group vacío |
 | Suscripciones           | SAP HANA Cloud (`tools`)                                   |
 | Destinations            | `NORTHWIND` (HTTP, Internet, NoAuthentication)             |

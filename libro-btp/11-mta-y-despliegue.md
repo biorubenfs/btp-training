@@ -702,69 +702,83 @@ son alias que `mbt` traduce a los que entiende el deploy service.
 ## 11.6 Desplegar
 
 ```bash
-cf login -a https://api.cf.us10-001.hana.ondemand.com
-cf target -s dev
+cf target -s dev            # si no estás ya en dev
 cf deploy mta_archives/bookshop_1.0.0.mtar
 ```
+
+Salida real del primer despliegue, 16 de noviembre:
 
 ```
 Deploying multi-target app archive mta_archives/bookshop_1.0.0.mtar in org 7b6c2113trial / space dev as ********...
 
 Uploading 1 files...
-  /home/rubenfs/projects/bookshop/mta_archives/bookshop_1.0.0.mtar
+  /home/rubenfs/projects/btp-training-projects/bookshop-cap/mta_archives/bookshop_1.0.0.mtar
+ 1s  11.56 MiB / 11.56 MiB [=========================================] 100.00% 1s
 OK
-Operation ID: 3f2a1c8e-....
+Operation ID: e235a154-e207-11f1-a792-eeee0a92bfeb
 Deploying in org "7b6c2113trial" and space "dev"
 Detected MTA schema version: "3"
-No deployed MTA detected - this is initial deployment
+No deployed MTA detected - this is initial deployment of MTA with ID "bookshop"
 Detected new MTA version: "1.0.0"
-Processing service "bookshop-auth"...
 Processing service "bookshop-db"...
-Creating service "bookshop-auth" from MTA resource "bookshop-auth"...
 Creating service "bookshop-db" from MTA resource "bookshop-db"...
-1 of 2 done
-2 of 2 done
-Creating application "bookshop-db-deployer" from MTA module "bookshop-db-deployer"...
-Binding service instance "bookshop-db" to application "bookshop-db-deployer"...
-Uploading application "bookshop-db-deployer"...
-Staging application "bookshop-db-deployer"...
-Application "bookshop-db-deployer" staged
-Executing task "deploy" on application "bookshop-db-deployer"...
-Task for application "bookshop-db-deployer" finished successfully
+Processing service "bookshop-auth"...
+Setting service "bookshop-auth" parameters from "xs-security.json"
+Creating service "bookshop-auth" from MTA resource "bookshop-auth"...
+0 of 1 done, (1 creating)
+1 of 1 done
 Creating application "bookshop-srv" from MTA module "bookshop-srv"...
 Binding service instance "bookshop-auth" to application "bookshop-srv"...
+Creating application "bookshop" from MTA module "bookshop"...
 Binding service instance "bookshop-db" to application "bookshop-srv"...
+Binding service instance "bookshop-auth" to application "bookshop"...
+Creating application "bookshop-db-deployer" from MTA module "bookshop-db-deployer"...
+Binding service instance "bookshop-db" to application "bookshop-db-deployer"...
+Uploading application "bookshop"...
 Uploading application "bookshop-srv"...
+Uploading application "bookshop-db-deployer"...
 Staging application "bookshop-srv"...
+Staging application "bookshop"...
+Staging application "bookshop-db-deployer"...
+Application "bookshop" staged
 Application "bookshop-srv" staged
+Starting application "bookshop"...
 Starting application "bookshop-srv"...
 Application "bookshop-srv" started and available at "7b6c2113trial-dev-bookshop-srv.cfapps.us10-001.hana.ondemand.com"
-Creating application "bookshop" from MTA module "bookshop"...
-Binding service instance "bookshop-auth" to application "bookshop"...
-Uploading application "bookshop"...
-Staging application "bookshop"...
-Application "bookshop" staged
-Starting application "bookshop"...
 Application "bookshop" started and available at "7b6c2113trial-dev-bookshop.cfapps.us10-001.hana.ondemand.com"
+Application "bookshop-db-deployer" staged
+Executing task "deploy" on application "bookshop-db-deployer"...
 Skipping deletion of services, because the command line option "--delete-services" is not specified.
 Process finished.
-Use "cf dmol -i 3f2a1c8e-..." to download the logs of the process.
+Use "cf dmol -i e235a154-e207-11f1-a792-eeee0a92bfeb" to download the logs of the process.
 ```
 
-> **Pendiente de validar.** Salida reconstruida a partir de la documentación
-> del plugin; se sustituirá por la real.
+Cada línea es una operación que ya conoces de los capítulos 4 y 5, solo que
+lanzada por el deploy service:
 
-El orden es siempre el mismo, y cada paso tiene su pantalla:
+| Línea del deploy                          | Equivale a                                   | Dónde se ve después                                   |
+|-------------------------------------------|----------------------------------------------|-------------------------------------------------------|
+| Creating service `bookshop-db`            | `cf create-service hana hdi-shared bookshop-db` | Instancias y suscripciones; `cf services`          |
+| Creating service `bookshop-auth` (con `xs-security.json`) | `cf create-service xsuaa application bookshop-auth -c xs-security.json` | Instancias y suscripciones; Seguridad › Roles |
+| Creating application + Binding            | `cf push --no-start` + `cf bind-service`     | Aplicaciones; `cf env <app>` muestra el `VCAP_SERVICES` |
+| Uploading / Staging                       | Subir el `data.zip` y ejecutar el buildpack  | `cf logs <app> --recent`, líneas `[STG]`              |
+| Starting                                  | `cf start`                                   | `cf apps`                                             |
+| Executing task "deploy" on `bookshop-db-deployer` | `cf run-task bookshop-db-deployer "npm start"` | `cf tasks bookshop-db-deployer`; logs `[APP/TASK/deploy]` |
 
-| Paso del deploy                          | Qué ha pasado                                     | Dónde se ve                                        |
-|------------------------------------------|---------------------------------------------------|----------------------------------------------------|
-| Creating service `bookshop-auth`         | Instancia XSUAA con `xs-security.json`            | Instancias y suscripciones; Seguridad › Roles      |
-| Creating service `bookshop-db`           | El broker crea el contenedor HDI (esquemas + usuarios) | Instancias y suscripciones; `cf services`     |
-| Executing task on `bookshop-db-deployer` | HDI crea las tablas en el esquema de runtime       | Logs del deployer; Database Explorer               |
-| Starting `bookshop-srv`                  | CAP arranca, lee `VCAP_SERVICES`, conecta a HANA  | Aplicaciones; `cf logs bookshop-srv --recent`      |
-| Starting `bookshop`                      | El approuter arranca con la URL de `srv` y la XSUAA | Aplicaciones › bookshop › Rutas                  |
+> **Trampa.** Con `enable-parallel-deployments: true` el orden **no** es
+> "primero el deployer, luego `srv`". En la salida de arriba `srv` y el
+> approuter arrancan *antes* de que la tarea del deployer termine, y la
+> última línea solo dice *Executing task*, no si acabó bien. Dos
+> consecuencias:
+>
+> 1. Hay que comprobar la tarea aparte: `cf tasks bookshop-db-deployer`
+>    debe decir `SUCCEEDED`.
+> 2. `srv` arranca contra un contenedor aún vacío. En su log aparece un
+>    `warn` del *outbox*: `Could not find table/view CDS_OUTBOX_MESSAGES in
+>    schema FE77…`. Es inofensivo: CAP lo reintenta y en cuanto el deployer
+>    crea las tablas todo funciona. Pero si lo ves, ya sabes por qué.
 
-El atajo que hace todo lo anterior de una vez (build + deploy):
+El atajo que hace build y deploy de una vez:
 
 ```bash
 cds up
@@ -775,35 +789,104 @@ cds up
 ```bash
 cf mtas
 cf mta bookshop
-cf apps
-cf services
+cf tasks bookshop-db-deployer
 ```
 
 ```
-Getting multi-target apps in org 7b6c2113trial / space dev as ********...
 mta id     version   namespace
 bookshop   1.0.0
 
-Showing health and status for multi-target app bookshop in org 7b6c2113trial / space dev as ********...
 Version: 1.0.0
 Namespace:
+
 Apps:
-name                   requested state   instances   memory   disk   urls
-bookshop               started           1/1         256M     256M   7b6c2113trial-dev-bookshop.cfapps.us10-001.hana.ondemand.com
-bookshop-db-deployer   stopped           0/1         256M     256M
-bookshop-srv           started           1/1         256M     1G     7b6c2113trial-dev-bookshop-srv.cfapps.us10-001.hana.ondemand.com
+name                   requested state   instances   memory   disk     urls
+bookshop-srv           STARTED           1/1         85.8M    226.4M   7b6c2113trial-dev-bookshop-srv.cfapps.us10-001.hana.ondemand.com
+bookshop               STARTED           1/1         45.5M    240.2M   7b6c2113trial-dev-bookshop.cfapps.us10-001.hana.ondemand.com
+bookshop-db-deployer   STOPPED           0/1         0        0
 
 Services:
 name            service   plan          bound apps                           last operation
-bookshop-auth   xsuaa     application   bookshop, bookshop-srv               create succeeded
-bookshop-db     hana      hdi-shared    bookshop-db-deployer, bookshop-srv   create succeeded
+bookshop-db     hana      hdi-shared    bookshop-srv, bookshop-db-deployer   create succeeded
+bookshop-auth   xsuaa     application   bookshop-srv, bookshop               create succeeded
+
+id   name     state       start time                      command
+1    deploy   SUCCEEDED   Mon, 16 Nov 2026 21:53:19 UTC   npm start
 ```
 
-Y en el navegador: abre la URL del approuter (`…-dev-bookshop.cfapps…`),
-pasa por el login de SAP ID Service y añade `/catalog/Books`.
+Fíjate en que `cf mta` muestra la memoria **usada** (85.8M), no la
+reservada. La reservada se ve con `cf app bookshop-srv`: 1G para `srv`,
+porque el `mta.yaml` no fija `memory` y ese es el valor por defecto del
+space. El approuter sí lleva `memory: 256M`.
 
-Si abres directamente la URL de `bookshop-srv` sin token, CAP responde `401`
-(con `auth: xsuaa` en producción). Es correcto: el camino es por el approuter.
+El log del deployer cuenta lo que hizo en HANA. Es el mismo contenedor
+HDI del capítulo 7, con otro nombre:
+
+```bash
+cf logs bookshop-db-deployer --recent | grep -E 'Deploying|Make|container'
+```
+
+```
+Deploying "src/gen/sap.capire.bookshop.Authors.hdbtable"... ok (0s 88ms)
+Deploying "src/gen/sap.capire.bookshop.Books.hdbtable"... ok (0s 28ms)
+Deploying "src/gen/data/sap.capire.bookshop-Authors.hdbtabledata$0.expand"... ok (0s 437ms)
+Deploying "src/gen/data/sap.capire.bookshop-Books.hdbtabledata$0.expand"... ok (0s 425ms)
+Deploying "src/gen/CatalogService.Authors.hdbview"... ok (0s 40ms)
+Deploying "src/gen/CatalogService.Books.hdbview"... ok (0s 40ms)
+Make succeeded (0 warnings): 11 files deployed (effective 13), 0 files undeployed (effective 0)
+Deploying to the container "FE77BBFE8A6A4B1C8996B61789849DB4"... ok (2s 114ms)
+```
+
+Y el arranque de `srv` cuenta a qué se ha conectado. Las líneas que
+importan, sin el JSON que las envuelve:
+
+```bash
+cf logs bookshop-srv --recent | grep -E 'Installing node|connect to db|auth strategy|serving|launched'
+```
+
+```
+[STG] -----> Installing node 24.22.1
+[cds] connect to db > hana { host: 'b7f3e3c5-….hna0.prod-us10.hanacloud.ondemand.com', port: '443',
+                              schema: 'FE77BBFE8A6A4B1C8996B61789849DB4',
+                              user: 'FE77BBFE8A6A4B1C8996B61789849DB4_…_RT', hdi_user: '…_DT' }
+[cds] using auth strategy { kind: 'xsuaa' }
+[cds] serving CatalogService { at: [ '/catalog' ], impl: 'srv/cat-service.js' }
+[cds] server v10.2.2 launched in 918 ms
+```
+
+Tres cosas se confirman ahí: el buildpack ha instalado Node 24 (el
+`engines ^24` de 11.5 no era problema en `us10`), `srv` usa el usuario
+`_RT` del contenedor (el de runtime, no el `_DT` de diseño, igual que
+viste en `SYS.SCHEMAS` en el capítulo 7), y el handler cargado es el
+`.js` compilado.
+
+Por último, los dos caminos de entrada de 11.4 con `curl`:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://7b6c2113trial-dev-bookshop-srv.cfapps.us10-001.hana.ondemand.com/catalog/Books
+curl -s -i https://7b6c2113trial-dev-bookshop.cfapps.us10-001.hana.ondemand.com/catalog/Books | head -c 300
+```
+
+```
+401
+```
+
+```
+HTTP/2 200
+content-type: text/html
+set-cookie: JSESSIONID=…; HttpOnly; Secure
+<html><head>…<script>…location="https://7b6c2113trial.authentication.us10.hana.ondemand.com/oauth/authorize?response_type=code&client_id=sb-bookshop-7b6c2113trial-dev!t742437&redirect_uri=https%3A%2F%2F7b6c2113trial-dev-bookshop.cfapps.us10-001.hana.ondemand.com%2Flogin%2Fcallback"</script></head></html>
+```
+
+`srv` directo, sin token: **401**, como anunciaba 11.4. El approuter no
+responde con un 302 sino con un **200 y una página mínima** cuyo script
+guarda en cookies a dónde querías ir y te manda al `/oauth/authorize` de
+XSUAA. El `client_id` que ves, `sb-bookshop-7b6c2113trial-dev!t742437`, es
+el de la instancia `bookshop-auth`: `sb-` + el `xsappname` del `mta.yaml`.
+
+En el navegador: abre la URL del approuter, pasa por el login de SAP ID
+Service y añade `/catalog/Books`. Los libros con `stock > 100` llevan
+"(en oferta)": el handler del capítulo 10 corriendo en BTP contra HANA.
 
 ## 11.8 Quitar la route pública de `srv`
 
