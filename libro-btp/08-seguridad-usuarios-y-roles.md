@@ -229,6 +229,36 @@ En una empresa suele haber dos: `sap.default` y el tenant de IAS corporativo
   lugar de a personas: Seguridad › Colecciones de roles › (colección) › Grupos.
   Es la forma escalable.
 
+### Por qué no hay "alta de usuario"
+
+Recién desplegada, cualquier cuenta de sap.com puede iniciar sesión en
+bookshop. Choca, pero es coherente con el modelo: BTP separa **identificar**
+de **autorizar**, y el alta de usuario que uno espera es la segunda parte,
+no la primera.
+
+- El proveedor de identidad solo responde "quién es". Es como un "Entrar con
+  Google": cualquier cuenta de Google puede identificarse en cualquier web
+  que lo ofrezca; que la web le deje hacer algo es cosa de la web.
+- La primera vez que alguien entra, la subcuenta le crea un **usuario
+  sombra** (*shadow user*) en Seguridad › Usuarios: un registro vacío, sin
+  role collections. Ese es el "alta", y la hace sola.
+- Lo que convierte ese alta en permiso es asignarle una role collection, y lo
+  que la exige es el `@requires` del servicio. Una app sin `@requires` es
+  una app pública para cualquier usuario identificado; las plantillas de CAP
+  no lo ponen por ti.
+
+Quien quiera un alta previa de verdad tiene dos palancas en Configuración de
+confianza, por IdP:
+
+| Ajuste                                  | Efecto                                                                                     |
+|-----------------------------------------|--------------------------------------------------------------------------------------------|
+| *Available for User Logon*              | Apagado: ese IdP deja de aparecer en el login. Así se retira SAP ID Service en producción  |
+| *Create Shadow Users During Logon*      | Apagado: solo entra quien **ya exista** en Seguridad › Usuarios. Hay que darlo de alta antes, a mano o por API |
+
+En el trial se dejan como están. En una subcuenta de empresa lo habitual es
+IAS como único IdP con logon, usuarios sombra solo para quien esté en el
+directorio corporativo, y `@requires` con un rol en cada servicio.
+
 ## 8.8 Trampas
 
 > **Trampa.** Token viejo tras asignar la role collection. Cerrar sesión.
