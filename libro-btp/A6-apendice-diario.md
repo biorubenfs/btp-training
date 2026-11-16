@@ -18,15 +18,15 @@ reproducir el camino.
 | 2026-11-16 | 11        | `cds add hana,xsuaa,approuter,mta` en `bookshop-cap`. `mta.yaml` idéntico al del libro. Comprobado que `cds add` no instala las dependencias nuevas (`@cap-js/hana` ausente de `node_modules`) y que `default-env.json` del `.gitignore` oculta el de `.deploy/app-router`. Sección 11.2 nueva con el paso a paso |
 | 2026-11-16 | 11        | `mbt build` correcto: `gen/srv/srv/cat-service.js` compilado, `gen/db` con tablas, vistas y outbox, `.mtar` de 13 MB. `engines ^24` lo escribe `cds build` en los `package.json` de `gen/`, no está en el del proyecto. Sección 11.5 con la salida real |
 | 2026-11-16 | 11        | Primer `cf deploy` de bookshop en `dev`, sin errores. Instancias `bookshop-db` y `bookshop-auth` creadas por el deploy service; tarea del deployer `SUCCEEDED` (contenedor `FE77BBFE…`); `srv` con Node 24.22.1, HANA y auth `xsuaa`; `srv` sin token 401; approuter responde 200 con redirección por script a XSUAA. Visto el `warn` del outbox por arrancar `srv` antes que el deployer. Secciones 11.6 y 11.7 con las salidas reales |
+| 2026-11-16 | 7, 11     | Approuter probado en el navegador: `/` da `Cannot GET /`, `/catalog/Books` tras el login muestra los libros con "(en oferta)". Contenedor `bookshop-db` abierto en Database Explorer como *HDI Container* con la key `explorer-key` pegada por *Apply From JSON String* (el login en CF del diálogo no cuajó). Punto 3 del ejercicio del capítulo 7 hecho |
 | 2026-11-15 | 7         | Mapping (org + space `dev`) y *Allow all IPs* confirmados. Contenedor de prueba `test-hdi` (`hana`/`hdi-shared`) creado por CLI, borrado y recreado desde el cockpit, con key. Esquemas reales consultados en `SYS.SCHEMAS` como `DBADMIN`: cinco por contenedor (datos, `#DI`, `#OO`, `_DT`, `_RT`), `HAS_PRIVILEGES=FALSE`. Capítulo 7.5 y 7.8 corregidos con ello |
 
 ## Pendiente
 
 Por orden del curso:
 
-1. ~~Confirmar la instancia HANA *Running*, mapping y conexiones (capítulo 7).~~ Hecho el 15. Falta el punto 3 del ejercicio (entrar al contenedor con su key) tras desplegar bookshop.
-2. Desplegar bookshop en `dev` (capítulo 11) y sustituir las salidas marcadas
-   *Pendiente de validar* por las reales.
+1. ~~Confirmar la instancia HANA, mapping, conexiones y entrar al contenedor con su key (capítulo 7).~~ Hecho el 15 y el 16.
+2. ~~Desplegar bookshop en `dev` (capítulo 11) y sustituir las salidas por las reales.~~ Hecho el 16. Quedan 11.8 (quitar la route pública de `srv`) y 11.9 (redesplegar y deshacer).
 3. Scope `Admin`, role collection y prueba de 403 (capítulo 8).
 4. `cds import` contra `NORTHWIND` (capítulo 9). La destination ya está creada.
 5. Modo híbrido y tests contra HANA (capítulo 12).
@@ -40,7 +40,7 @@ Por orden del curso:
 | Subcuenta               | `trial`, `us10`, subdominio `7b6c2113trial`                |
 | Org / space             | `7b6c2113trial` / `dev`                                    |
 | Apps desplegadas        | MTA `bookshop` 1.0.0 en `dev`: `bookshop-srv`, `bookshop` (approuter), `bookshop-db-deployer` (stopped). Repo `biorubenfs/bookshop-cap` |
-| Instancias en el space  | `dest-dev` (`destination`/`lite`) con key `key1`; `test-hdi` (`hana`/`hdi-shared`) con key `key1`, por borrar; `bookshop-db` (`hana`/`hdi-shared`) y `bookshop-auth` (`xsuaa`/`application`), creadas por la MTA |
+| Instancias en el space  | `dest-dev` (`destination`/`lite`) con key `key1`; `test-hdi` (`hana`/`hdi-shared`) con key `key1`, por borrar; `bookshop-db` (`hana`/`hdi-shared`, con key `explorer-key`) y `bookshop-auth` (`xsuaa`/`application`), creadas por la MTA |
 | HANA Cloud              | `hana-trial`, arrancada el 15. Mapping confirmado **solo al space `dev`** (org + space): para el space `prod` del capítulo 14 habrá que añadir otro mapping o dejar el Environment Group vacío |
 | Suscripciones           | SAP HANA Cloud (`tools`)                                   |
 | Destinations            | `NORTHWIND` (HTTP, Internet, NoAuthentication)             |

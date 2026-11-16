@@ -287,13 +287,23 @@ se enteraría y el siguiente deploy podría fallar.
 `bookshop-db` y añade la conexión al Database Explorer con esas credenciales.
 Verás solo el esquema de runtime, exactamente lo que ve tu código.
 
-La forma más corta no necesita key: el Database Explorer sabe conectarse a
-un contenedor con las credenciales de la propia instancia. Desde la ventana
-de `DBADMIN`: panel *Databases* › **+** (*Add Database*) › *Database Type*:
-**HDI Container** › login en Cloud Foundry (endpoint
-`https://api.cf.us10-001.hana.ondemand.com`, usuario de BTP) › org y space
-› `bookshop-db`. Aparece una segunda conexión con un solo esquema, el de
-runtime (`FE77BBFE…`, el mismo que `srv` imprime al arrancar), y dentro:
+Desde la ventana de `DBADMIN`: panel *Databases* › **+** (*Add Instance*)
+› *Instance Type*: **HDI Container**. El diálogo ofrece dos vías. Arriba, un
+enlace para iniciar sesión en Cloud Foundry que, si cuaja, convierte el
+formulario en selectores de org, space e instancia. Abajo, el formulario
+manual (*Host*, *Schema*, *User*, *Password*, *Admin User*...) con un botón
+**Apply From JSON String**. El 16 de noviembre el login no quedó registrado
+en el explorador y lo que funcionó fue la segunda vía: crear una key y pegar
+su JSON entero en ese botón, que rellena todos los campos (`user` → *User*,
+`hdi_user` → *Admin User*).
+
+```bash
+cf create-service-key bookshop-db explorer-key
+cf service-key bookshop-db explorer-key      # copiar desde { hasta }
+```
+
+Aparece una segunda conexión con un solo esquema, el de runtime
+(`FE77BBFE…`, el mismo que `srv` imprime al arrancar), y dentro:
 
 | Catalog › | Objetos                                                                 | De dónde salen                                    |
 |-----------|-------------------------------------------------------------------------|---------------------------------------------------|
@@ -312,12 +322,12 @@ SELECT * FROM CATALOGSERVICE_BOOKS;              -- sin "(en oferta)": eso lo po
 Es la comparación del ejercicio: `DBADMIN` sabe que el esquema existe y no
 puede abrirlo; la app ve solo ese esquema y todo lo que contiene.
 
-Si prefieres la key, el camino manual:
+> **Trampa.** Al pulsar el enlace de login del diálogo, el explorador manda
+> al login de Cloud Foundry (el mismo que `cf login`), no al del cockpit. Con
+> el proveedor por defecto (SAP ID Service) basta; el alternativo es para un
+> IdP corporativo. Y la key es una credencial: no va a ningún fichero del
+> repo. `default-env.json` está en el `.gitignore` precisamente para eso.
 
-```bash
-cf create-service-key bookshop-db explorer-key
-cf service-key bookshop-db explorer-key      # host, port, user, password, schema
-```
 
 Desde la terminal, la forma más rápida de comprobar que las tablas están es
 el propio CAP en modo híbrido (capítulo 12):
