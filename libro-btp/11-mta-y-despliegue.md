@@ -29,6 +29,143 @@ despliega el *deploy service* de Cloud Foundry, al que se habla con el plugin
 > hace que la realidad coincida con lo declarado. `cf push` sería `docker run`
 > a mano, app por app.
 
+### Anatomía de un `mta.yaml`
+
+Cualquier `mta.yaml`, sea de CAP, de Java o de una UI5, tiene la misma
+forma: una cabecera, una lista de **módulos** y una lista de **recursos**.
+Todo lo demás son detalles dentro de esas tres partes.
+
+```yaml
+_schema-version: 3.3.0        # versión del formato del fichero
+ID: mi-app                    # identificador de la MTA en el space
+version: 1.0.0                # versión de la MTA (semver)
+description: "..."
+parameters:                   # ajustes globales para el deploy service
+  enable-parallel-deployments: true
+build-parameters:             # qué ejecuta mbt build antes de empaquetar
+  before-all: [...]
+modules:                      # lo que se despliega como apps
+  - name: ...
+resources:                    # lo que se crea como instancias de servicio
+  - name: ...
+```
+
+| Sección            | Qué define                                                                  | Quién lo lee                      |
+|--------------------|-----------------------------------------------------------------------------|-----------------------------------|
+| Cabecera (`ID`, `version`) | La identidad de la MTA. Con `ID` el deploy service sabe si es un despliegue nuevo o una actualización | `cf deploy`             |
+| `parameters`       | Opciones globales del despliegue (paralelismo, borrado de servicios...)     | `cf deploy`                       |
+| `build-parameters` | Comandos previos al empaquetado                                             | `mbt build`                       |
+| `modules`          | Una entrada por app. Cada una: de dónde sale el código, cómo se construye, con qué se liga, qué ofrece | `mbt build` (empaqueta) y `cf deploy` (crea la app) |
+| `resources`        | Una entrada por instancia de servicio o por cosa externa que las apps necesitan | `cf deploy`                   |
+
+**Un módulo** tiene siempre estas claves, y conviene distinguir dos que se
+confunden: `parameters` son instrucciones para Cloud Foundry (memoria, rutas,
+buildpack), `properties` son variables de entorno para la app.
+
+```yaml
+modules:
+  - name: mi-srv
+    type: nodejs                   # cómo desplegarlo: nodejs, java, hdb, approuter.nodejs, html5...
+    path: gen/srv                  # qué carpeta se sube
+    build-parameters:
+      builder: npm-ci              # cómo construir esa carpeta antes de subirla
+      ignore: ["node_modules/"]
+    parameters:                    # → cf push
+      memory: 256M
+      disk-quota: 512M
+      instances: 1
+      buildpack: nodejs_buildpack
+      routes:
+        - route: mi-srv.cfapps.us10-001.hana.ondemand.com
+    properties:                    # → variables de entorno de la app
+      LOG_LEVEL: info
+    requires:                      # → bindings (si apuntan a un recurso)
+      - name: mi-db                #   o datos de otro módulo (si apuntan a un provides)
+    provides:                      # → datos que otros módulos pueden pedir
+      - name: srv-api
+        properties:
+          srv-url: ${default-url}
+```
+
+| `type` del módulo  | Qué es                                                                                         |
+|--------------------|------------------------------------------------------------------------------------------------|
+| `nodejs`           | App Node con el buildpack de Node. CAP, Express, lo que sea                                     |
+| `java`             | App Java (Spring Boot, CAP Java) con el buildpack de Java                                       |
+| `hdb`              | App de un solo uso que ejecuta `@sap/hdi-deploy` contra un contenedor HDI y se para            |
+| `approuter.nodejs` | App Node preconfigurada como approuter                                                         |
+| `html5`            | Una app UI5/Fiori. Normalmente no se despliega como app sino que se sube al HTML5 Application Repository mediante un módulo `com.sap.application.content` |
+
+**Un recurso** se describe con un `type` y unos `parameters` que son los
+mismos que le darías a `cf create-service`:
+
+```yaml
+resources:
+  - name: mi-db
+    type: com.sap.xs.hdi-container       # atajo para hana / hdi-shared
+  - name: mi-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json           # parámetros de creación desde fichero
+  - name: mi-dest
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
+      config:                            # parámetros de creación en línea
+        init_data:
+          subaccount:
+            existing_destinations_policy: ignore
+  - name: dest-ya-creada
+    type: org.cloudfoundry.existing-service   # NO la crea: liga una que ya existe
+    parameters:
+      service-name: dest-dev
+```
+
+| `type` del recurso                   | Qué hace el deploy service                                                        |
+|--------------------------------------|-----------------------------------------------------------------------------------|
+| `org.cloudfoundry.managed-service`   | `cf create-service <service> <plan>` con los `parameters`. Si ya existe, la actualiza |
+| `org.cloudfoundry.existing-service`  | No crea nada; solo permite hacer `requires` sobre una instancia creada a mano (la `dest-dev` del capítulo 6, por ejemplo) |
+| `com.sap.xs.hdi-container`           | Azúcar para `managed-service` con `hana` / `hdi-shared`                           |
+| `org.cloudfoundry.user-provided-service` | `cf create-user-provided-service`: credenciales que pones tú, para sistemas fuera de BTP |
+| `configuration`                      | Lee datos publicados por **otra MTA** del mismo space (`provides` con `public: true`) |
+
+**Dos tipos de marcador** aparecen por todo el fichero y son la parte que
+más cuesta leer:
+
+| Marcador           | Quién lo resuelve                 | Ejemplo                                                        |
+|--------------------|-----------------------------------|----------------------------------------------------------------|
+| `${...}`           | El deploy service, con datos del entorno | `${org}`, `${space}`, `${default-url}` (la URL que CF asigna a la app), `${default-uri}`, `${protocol}` |
+| `~{...}`           | El deploy service, con datos de **otro módulo o recurso** que esté en `requires` | `~{srv-url}` toma la propiedad `srv-url` del `provides` llamado `srv-api` |
+
+Y un `requires` puede llevar `group` y `properties`: entonces no es un
+binding sino una **variable de entorno compuesta**. Es como el approuter
+recibe la URL de `srv`:
+
+```yaml
+    requires:
+      - name: srv-api
+        group: destinations          # todas las entradas con este group van a una
+        properties:                  # única variable de entorno llamada destinations
+          name: srv-api
+          url: ~{srv-url}
+          forwardAuthToken: true
+```
+
+Resultado en la app: `destinations=[{"name":"srv-api","url":"https://...","forwardAuthToken":true}]`.
+
+> **Analogía.** `modules` son los `services` de un `docker-compose.yml`
+> que tienen `build:`; `resources` son los que tienen `image:` de algo
+> externo (postgres, keycloak) y los volúmenes; `requires` son los
+> `depends_on` más las `environment` que les pasas; `${}` y `~{}` son la
+> interpolación de variables. La diferencia es que aquí el "compose" lo
+> ejecuta un servicio de la plataforma, no tu máquina.
+
+Lo que cambia entre entornos (memoria en prod, otra ruta, otro plan) no se
+toca en el `mta.yaml`: se pone en un `.mtaext`, un fichero de extensión que
+se aplica encima con `cf deploy -e`. Lo verás en el capítulo 14.
+
 ## 11.2 Preparar el proyecto: `cds add`
 
 Antes de que exista un `mta.yaml` hay que decirle a cds-dk qué servicios va
