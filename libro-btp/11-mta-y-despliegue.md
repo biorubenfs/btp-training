@@ -139,6 +139,47 @@ git commit -m "cds add hana,xsuaa,approuter,mta: descriptor MTA, approuter y aut
 Es el que acaba de generar `cds add` con cds-dk 10.2.1, sin tocar (el real
 lleva además dos comentarios junto a `srv-api`, omitidos aquí):
 
+### Quién es quién
+
+Antes de las claves, las piezas. El fichero declara cinco cosas: tres
+**módulos**, que acabarán siendo apps de Cloud Foundry (cada una un proceso
+con su `cf push` implícito), y dos **recursos**, que acabarán siendo
+instancias de servicio (lo que hasta ahora creabas con `cf create-service`).
+Los nombres son los que cds-dk deriva del `ID` de la MTA.
+
+| Nombre                 | Qué es        | Qué hay dentro                                                                                   | Qué hace en producción                                                                                     | Después del deploy se ve en          |
+|------------------------|---------------|--------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|--------------------------------------|
+| `bookshop-srv`         | Módulo (app)  | `gen/srv`: tu servicio CAP compilado, `csn.json`, `package.json` con las dependencias de runtime | El servidor Node que has estado viendo con `cds-tsx watch`, pero con HANA detrás y validando JWT. Expone `/odata/v4/catalog`. Corre siempre | `cf apps`, *started*                 |
+| `bookshop-db-deployer` | Módulo (app)  | `gen/db`: los `.hdbtable`, los CSV y un `package.json` con `@sap/hdi-deploy`                     | Arranca, conecta al contenedor HDI, crea o actualiza las tablas, carga los CSV y **termina**. Es el equivalente a ejecutar las migraciones | `cf apps`, *stopped*, 0/1 instancias |
+| `bookshop`             | Módulo (app)  | `.deploy/app-router`: el approuter de SAP, `xs-app.json` con las rutas                          | La puerta de entrada: redirige al login de XSUAA, guarda la sesión y reenvía cada petición a `srv` con el token. Es la única URL que das a un usuario | `cf apps`, *started*, con route      |
+| `bookshop-auth`        | Recurso (instancia) | Una instancia de `xsuaa`, plan `application`, creada con `xs-security.json`                | El servidor de identidad de la app: emite los JWT y conoce sus scopes y roles. No ejecuta tu código; es un servicio gestionado por SAP | `cf services`, *Instancias y suscripciones* |
+| `bookshop-db`          | Recurso (instancia) | Una instancia de `hana`, plan `hdi-shared`: un contenedor HDI como `test-hdi` del capítulo 7 | El esquema de bookshop dentro de `hana-trial`, con sus usuarios técnicos. Tampoco ejecuta código: es un sitio donde guardar tablas | `cf services`, Database Explorer     |
+
+En ejecución quedan así. El deployer ya ha terminado y no está; lo que corre
+son dos apps y lo que las sostiene son dos servicios:
+
+```
+  navegador ──▶ bookshop (approuter) ──▶ bookshop-srv ──▶ bookshop-db (HDI en hana-trial)
+                     │                        │
+                     └──── login / JWT ───────┴──────▶ bookshop-auth (XSUAA)
+
+  bookshop-db-deployer ──▶ bookshop-db      (una sola vez, al desplegar; luego stopped)
+```
+
+> **Analogía.** En un `docker-compose.yml`: `srv` y el approuter son dos
+> `services` con imagen propia que se quedan corriendo; el deployer es un
+> contenedor de migraciones con `restart: "no"`; `bookshop-db` es el volumen
+> más la base de datos; `bookshop-auth` sería un Keycloak que no gestionas
+> tú. En AWS: dos tareas ECS, un job de una ejecución, una base RDS y un
+> Cognito.
+
+Lo que une cada pieza con las demás son los `requires`: `srv` requiere la
+base y la XSUAA (dos bindings), el deployer solo la base, el approuter la
+XSUAA y la URL de `srv`. En tu proyecto real que usaba destinations, aquella
+instancia `destination` era un recurso más y el `requires` en `srv` el
+binding que la hacía aparecer en `VCAP_SERVICES`.
+
+
 ```yaml
 _schema-version: 3.3.0
 ID: bookshop
