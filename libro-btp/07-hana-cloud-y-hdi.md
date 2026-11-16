@@ -322,6 +322,16 @@ SELECT * FROM CATALOGSERVICE_BOOKS;              -- sin "(en oferta)": eso lo po
 Es la comparación del ejercicio: `DBADMIN` sabe que el esquema existe y no
 puede abrirlo; la app ve solo ese esquema y todo lo que contiene.
 
+La misma key sirve para cualquier cliente SQL, por ejemplo DBeaver, que
+trae el driver JDBC de SAP HANA: `host` y `port` (443) tal cual, `user` y
+`password` (el usuario `_RT`), y cifrado obligatorio (casilla SSL o
+`encrypt=true` y `validateCertificate=true` en las propiedades del driver;
+el certificado lo firma DigiCert y no hay que importarlo). `hdi_user` es
+el usuario de diseño del deployer y no se usa para consultar. Funciona
+porque la instancia tiene *Allow all IPs*; con "solo BTP" el portátil no
+llegaría. Y con `DBADMIN` y el *SQL Endpoint* de HANA Cloud Central también
+conecta, pero con la misma limitación que en el explorador.
+
 > **Trampa.** Al pulsar el enlace de login del diálogo, el explorador manda
 > al login de Cloud Foundry (el mismo que `cf login`), no al del cockpit. Con
 > el proveedor por defecto (SAP ID Service) basta; el alternativo es para un
