@@ -332,6 +332,14 @@ porque la instancia tiene *Allow all IPs*; con "solo BTP" el portátil no
 llegaría. Y con `DBADMIN` y el *SQL Endpoint* de HANA Cloud Central también
 conecta, pero con la misma limitación que en el explorador.
 
+> **Trampa.** La primera vez que DBeaver usa el driver de HANA abre una
+> ventana *Download driver files* y espera a que pulses *Download*. Si se
+> cierra sin confirmar, DBeaver sigue e intenta conectar sin el `.jar`:
+> `Can't create driver instance (class 'com.sap.db.jdbc.Driver')`. Se
+> arregla en *Edit Driver Settings › Libraries › Download/Update*, o
+> añadiendo a mano `ngdbc-<versión>.jar` de Maven Central
+> (`com.sap.cloud.db.jdbc:ngdbc`).
+
 > **Trampa.** Al pulsar el enlace de login del diálogo, el explorador manda
 > al login de Cloud Foundry (el mismo que `cf login`), no al del cockpit. Con
 > el proveedor por defecto (SAP ID Service) basta; el alternativo es para un
