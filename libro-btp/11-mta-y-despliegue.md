@@ -888,6 +888,15 @@ En el navegador: abre la URL del approuter, pasa por el login de SAP ID
 Service y añade `/catalog/Books`. Los libros con `stock > 100` llevan
 "(en oferta)": el handler del capítulo 10 corriendo en BTP contra HANA.
 
+> **Trampa.** La URL del approuter a secas responde `Cannot GET /`. Es
+> Express, dentro de `srv`: la petición ha llegado, pero `srv` no tiene nada
+> en la raíz. En local sí (la página índice de `cds watch`), pero esa página
+> solo existe en desarrollo; en `production` CAP la apaga. Para saber las
+> rutas de una app desplegada: el `@(path: ...)` del `.cds`, la línea
+> `serving CatalogService { at: [...] }` del log de arranque, o el propio
+> OData: `/catalog/` lista las entidades y `/catalog/$metadata` el esquema.
+> Una app con UI serviría algo en `/` vía `welcomeFile` en `xs-app.json`.
+
 ## 11.8 Quitar la route pública de `srv`
 
 Que `srv` tenga URL pública es cómodo para depurar y peligroso en producción.
