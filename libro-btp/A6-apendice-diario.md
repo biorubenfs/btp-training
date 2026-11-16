@@ -13,6 +13,8 @@ reproducir el camino.
 | 2026-11-13 | 7         | Creación de la instancia SAP HANA Cloud `hana-trial` lanzada desde HANA Cloud Central, con "Allow all IPs" y mapping a la org |
 | 2026-11-14 | —         | Primera versión del libro. El proyecto `bookshop` de los capítulos 10 y 11 lo generó el asistente en un directorio temporal con cds-dk 10.2.1 solo para capturar los ficheros reales; no se conservó ni se desplegó |
 | 2026-11-15 | 6, 9      | Instancia HANA arrancada. `dest-dev` + `key1` creadas dos veces desde el cockpit (la primera borrada en orden). Token OAuth2 pedido con `curl`, API de destinations llamada antes (`[]`) y después de crear `NORTHWIND` en el cockpit, JWT decodificado. Autocompletado de `cf` instalado (ver `INSTALADO.md`) |
+| 2026-11-15 | 10        | `bookshop` generado en `~/projects/btp-training-projects/bookshop-cap` con `--add nodejs,typescript,typer,tiny-sample`, repo propio en GitHub (`biorubenfs/bookshop-cap`). `.gitignore` completado a mano. Dos arreglos al `tsconfig` (`@sap/cds` en `types` en vez de `paths`, y `tsconfig.cdsbuild.json` con `files: []`), un commit cada uno. Modelo separado en `db/schema.cds` (Books, Authors) con CSV por tabla; scripts `typer`, `typecheck` y `build`. `npx tsc --noEmit` pasa |
+| 2026-11-16 | 10        | Handler `srv/cat-service.ts` (`after READ` de Books, añade "(en oferta)" si `stock > 100`) probado con `cds-tsx watch` contra `/catalog/Books` y commiteado. Capítulo 10 cerrado |
 | 2026-11-15 | 7         | Mapping (org + space `dev`) y *Allow all IPs* confirmados. Contenedor de prueba `test-hdi` (`hana`/`hdi-shared`) creado por CLI, borrado y recreado desde el cockpit, con key. Esquemas reales consultados en `SYS.SCHEMAS` como `DBADMIN`: cinco por contenedor (datos, `#DI`, `#OO`, `_DT`, `_RT`), `HAS_PRIVILEGES=FALSE`. Capítulo 7.5 y 7.8 corregidos con ello |
 
 ## Pendiente
@@ -34,7 +36,7 @@ Por orden del curso:
 |-------------------------|------------------------------------------------------------|
 | Subcuenta               | `trial`, `us10`, subdominio `7b6c2113trial`                |
 | Org / space             | `7b6c2113trial` / `dev`                                    |
-| Apps desplegadas        | Ninguna                                                    |
+| Apps desplegadas        | Ninguna. `bookshop-cap` solo en local, repo `biorubenfs/bookshop-cap` |
 | Instancias en el space  | `dest-dev` (`destination`/`lite`) con key `key1`; `test-hdi` (`hana`/`hdi-shared`) con key `key1`, por borrar |
 | HANA Cloud              | `hana-trial`, arrancada el 15. Mapping confirmado **solo al space `dev`** (org + space): para el space `prod` del capítulo 14 habrá que añadir otro mapping o dejar el Environment Group vacío |
 | Suscripciones           | SAP HANA Cloud (`tools`)                                   |
