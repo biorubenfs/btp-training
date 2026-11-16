@@ -286,7 +286,7 @@ Los nombres son los que cds-dk deriva del `ID` de la MTA.
 
 | Nombre                 | Qué es        | Qué hay dentro                                                                                   | Qué hace en producción                                                                                     | Después del deploy se ve en          |
 |------------------------|---------------|--------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|--------------------------------------|
-| `bookshop-srv`         | Módulo (app)  | `gen/srv`: tu servicio CAP compilado, `csn.json`, `package.json` con las dependencias de runtime | El servidor Node que has estado viendo con `cds-tsx watch`, pero con HANA detrás y validando JWT. Expone `/odata/v4/catalog`. Corre siempre | `cf apps`, *started*                 |
+| `bookshop-srv`         | Módulo (app)  | `gen/srv`: tu servicio CAP compilado, `csn.json`, `package.json` con las dependencias de runtime | El servidor Node que has estado viendo con `cds-tsx watch`, pero con HANA detrás y validando JWT. Expone `/catalog`. Corre siempre | `cf apps`, *started*                 |
 | `bookshop-db-deployer` | Módulo (app)  | `gen/db`: los `.hdbtable`, los CSV y un `package.json` con `@sap/hdi-deploy`                     | Arranca, conecta al contenedor HDI, crea o actualiza las tablas, carga los CSV y **termina**. Es el equivalente a ejecutar las migraciones | `cf apps`, *stopped*, 0/1 instancias |
 | `bookshop`             | Módulo (app)  | `.deploy/app-router`: el approuter de SAP, `xs-app.json` con las rutas                          | La puerta de entrada: redirige al login de XSUAA, guarda la sesión y reenvía cada petición a `srv` con el token. Es la única URL que das a un usuario | `cf apps`, *started*, con route      |
 | `bookshop-auth`        | Recurso (instancia) | Una instancia de `xsuaa`, plan `application`, creada con `xs-security.json`                | El servidor de identidad de la app: emite los JWT y conoce sus scopes y roles. No ejecuta tu código; es un servicio gestionado por SAP | `cf services`, *Instancias y suscripciones* |
@@ -457,6 +457,73 @@ El approuter es una app Node.js de SAP que hace de puerta de entrada:
                  │ reenvía con Bearer
                  └ sirve UIs estáticas
 ```
+
+### Dos caminos de entrada
+
+Bookshop sigue siendo una API: `srv` es quien responde. El approuter no la
+sustituye, le pone delante un login para quien no sabe pedir tokens: el
+navegador. Un programa sí sabe, y no lo necesita.
+
+| Quien llama                          | A dónde              | Cómo se identifica                                   |
+|--------------------------------------|----------------------|------------------------------------------------------|
+| Una persona con navegador            | Approuter            | Login con usuario y contraseña; cookie de sesión     |
+| Un programa (otra app, `curl`, Postman) | `srv` directamente | Un JWT en la cabecera `Authorization: Bearer`        |
+
+**Ejemplo 1: listar libros desde el navegador.** Abres
+`https://…-dev-bookshop.cfapps…/catalog/Books`.
+
+1. El approuter busca en `xs-app.json`: la ruta `^/(.*)$` va a la
+   destination `srv-api`. No llevas cookie, así que te redirige al login de
+   XSUAA.
+2. Te identificas con tu usuario del trial. XSUAA devuelve al approuter un
+   código, el approuter lo cambia por un JWT y te deja una cookie de sesión.
+3. El approuter reenvía `GET /catalog/Books` a
+   `https://…-dev-bookshop-srv.cfapps…/catalog/Books` con
+   `Authorization: Bearer <jwt>` (eso es `forwardAuthToken: true`).
+4. `srv` valida el JWT con `@sap/xssec`, ejecuta el handler `after READ`
+   y devuelve el JSON. El approuter te lo pasa sin tocarlo.
+
+La segunda petición ya lleva cookie y solo ocurren los pasos 3 y 4.
+
+**Ejemplo 2: la misma lista desde `curl`.** Sin approuter. Es lo que hace
+una app que llama a otra: pide un token a XSUAA con las credenciales de una
+service key de `bookshop-auth` y lo presenta a `srv`.
+
+```bash
+# 1. Token con client credentials (url, clientid y clientsecret de la service key)
+TOKEN=$(curl -s -X POST "$UAA_URL/oauth/token" \
+  -u "$CLIENTID:$CLIENTSECRET" \
+  -d "grant_type=client_credentials" | jq -r .access_token)
+
+# 2. Llamada directa a srv
+curl -H "Authorization: Bearer $TOKEN" \
+  https://…-dev-bookshop-srv.cfapps…/catalog/Books
+```
+
+**Ejemplo 3: un servicio personalizado.** Una acción en `cat-service.cds`:
+
+```cds
+service CatalogService @(path: '/catalog') {
+  @readonly entity Books as projection on my.Books;
+  action submitOrder(book: Books:ID, quantity: Integer) returns { stock: Integer };
+}
+```
+
+CAP la expone como `POST /catalog/submitOrder` con cuerpo
+`{"book": "…", "quantity": 2}`. El flujo es el mismo que para `Books`:
+desde una UI en el navegador va por el approuter con la cookie; desde un
+programa va directa a `srv` con el token. El handler,
+`this.on('submitOrder', …)`, se escribe una vez y no sabe por qué camino ha
+llegado la petición.
+
+Dos matices:
+
+- En local llamas a `srv` en `localhost:4004` sin token porque la auth es
+  `mocked`. En BTP, con `auth: xsuaa`, la misma llamada sin token devuelve
+  **401**.
+- Si quitas la route pública de `srv` (11.8), los programas entran también
+  por el approuter: acepta un `Authorization: Bearer` que ya venga puesto y
+  lo reenvía sin pedir login.
 
 Lo que hay en `.deploy/app-router/`:
 
@@ -660,7 +727,7 @@ bookshop-db     hana      hdi-shared    bookshop-db-deployer, bookshop-srv   cre
 ```
 
 Y en el navegador: abre la URL del approuter (`…-dev-bookshop.cfapps…`),
-pasa por el login de SAP ID Service y añade `/odata/v4/catalog/Books`.
+pasa por el login de SAP ID Service y añade `/catalog/Books`.
 
 Si abres directamente la URL de `bookshop-srv` sin token, CAP responde `401`
 (con `auth: xsuaa` en producción). Es correcto: el camino es por el approuter.
