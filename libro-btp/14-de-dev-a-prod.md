@@ -109,7 +109,7 @@ pipeline.
    `bookshop-prod…`. Hace falta otra role collection (`Bookshop_Admin_Prod`)
    o añadir ese rol a la existente. Es la demostración de que la XSUAA de
    prod es otra.
-8. **Quitar la route pública de `srv`** en prod (capítulo 11.7) y comprobar
+8. **Quitar la route pública de `srv`** en prod (capítulo 11.8) y comprobar
    que solo se entra por el approuter.
 
 Resultado: dos entornos aislados a nivel de Cloud Foundry, con la misma HANA

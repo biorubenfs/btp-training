@@ -29,10 +29,115 @@ despliega el *deploy service* de Cloud Foundry, al que se habla con el plugin
 > hace que la realidad coincida con lo declarado. `cf push` sería `docker run`
 > a mano, app por app.
 
-## 11.2 El `mta.yaml` de bookshop, línea a línea
+## 11.2 Preparar el proyecto: `cds add`
 
-Es el que generó `cds add hana,xsuaa,approuter,mta` con cds-dk 10.2.1, sin
-tocar:
+Antes de que exista un `mta.yaml` hay que decirle a cds-dk qué servicios va
+a usar la app en BTP. Se hace con un solo comando, que añade cuatro *facets*
+al proyecto del capítulo 10:
+
+```bash
+cd ~/projects/btp-training-projects/bookshop-cap
+cds add hana,xsuaa,approuter,mta
+git status
+```
+
+```
+Adding facet: mta
+Adding facet: xsuaa
+Adding facet: hana
+Adding facet: approuter
+
+Successfully added features to your project
+```
+
+```
+Changes not staged for commit:
+        modified:   package.json
+
+Untracked files:
+        .deploy/
+        mta.yaml
+        xs-security.json
+```
+
+El orden en que las aplica no es el que escribes: `mta` va primero porque las
+otras tres añaden sus módulos y recursos al `mta.yaml`. Cada facet deja algo
+concreto en el proyecto:
+
+| Facet       | Qué toca                                                                 | Qué representa                                                                    | Para qué sirve                                                                 |
+|-------------|--------------------------------------------------------------------------|-----------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| `hana`      | `@cap-js/hana` en `dependencies`                                         | El *driver* de HANA para CAP. En local sigue mandando `@cap-js/sqlite`            | Con el perfil `production`, `cds build` genera `gen/db` (artefactos HDI) y `srv` se conecta a HANA leyendo `VCAP_SERVICES` |
+| `xsuaa`     | `@sap/xssec` en `dependencies`; `xs-security.json`; `cds.requires.[production].auth: xsuaa` en `package.json` | El contrato con el servicio de autenticación: scopes, atributos y plantillas de rol | En producción CAP valida el JWT que le llega con `xssec`; en local sigue `mocked`. El capítulo 8 rellena el fichero |
+| `approuter` | `.deploy/app-router/` con `package.json`, `xs-app.json` y `default-env.json` | Una app Node aparte, la puerta de entrada (11.4)                                  | Hace el login contra XSUAA y reenvía al `srv` con el token                     |
+| `mta`       | `mta.yaml`; `@sap/cds-dk` en `devDependencies`                           | El descriptor de despliegue: qué apps, qué instancias, qué bindings               | Es lo que `mbt build` empaqueta y `cf deploy` ejecuta. `cds-dk` va como dependencia porque el `before-all` del `mta.yaml` lanza `npx cds build` tras un `npm ci` limpio |
+
+El `diff` del `package.json` resume lo que ha cambiado:
+
+```diff
+   "dependencies": {
+-    "@sap/cds": "^10"
++    "@cap-js/hana": "^3",
++    "@sap/cds": "^10",
++    "@sap/xssec": "^4"
+   },
+   "devDependencies": {
+     ...
++    "@sap/cds-dk": "^10",
+     ...
+   },
++  "cds": {
++    "requires": {
++      "[production]": {
++        "auth": "xsuaa"
++      }
++    }
++  }
+```
+
+La entrada `cds.requires.[production]` es la pieza que une los dos mundos:
+el mismo código arranca con SQLite y auth `mocked` en tu máquina y con HANA y
+XSUAA en BTP. El perfil `production` se activa con `NODE_ENV=production`,
+que el buildpack de Node pone por defecto. Para la base de datos no hace
+falta entrada: `@cap-js/hana` se registra solo para ese perfil al estar
+instalado.
+
+`xs-security.json` nace vacío. Es el fichero que el recurso `bookshop-auth`
+del `mta.yaml` pasa a XSUAA al crear la instancia:
+
+```json
+{
+  "scopes": [],
+  "attributes": [],
+  "role-templates": []
+}
+```
+
+> **Trampa.** `cds add` escribe el `package.json` pero **no instala nada**:
+> tras el comando, `node_modules/@cap-js/` sigue sin `hana`. Hay que lanzar
+> `npm install` antes de construir. Sin él, `cds build --production` no
+> genera el bloque `for: 'hana'` y `gen/db` sale vacío, y además el
+> `package-lock.json` no coincide con el `package.json`, con lo que el
+> `npm ci` del `before-all` falla.
+
+> **Trampa.** Si en el capítulo 10 pusiste `default-env.json` en el
+> `.gitignore`, esa entrada vale a cualquier profundidad y oculta también
+> `.deploy/app-router/default-env.json`. Está bien así: ese fichero solo sirve
+> para probar el approuter en local contra `cds watch`; en BTP la destination
+> `srv-api` la inyecta el `mta.yaml`. El resto de `.deploy/` sí va a git.
+
+Con eso el proyecto tiene todo lo que el `mta.yaml` referencia. Un commit por
+el paso:
+
+```bash
+npm install
+git add package.json package-lock.json mta.yaml xs-security.json .deploy
+git commit -m "cds add hana,xsuaa,approuter,mta: descriptor MTA, approuter y auth xsuaa en producción"
+```
+
+## 11.3 El `mta.yaml` de bookshop, línea a línea
+
+Es el que acaba de generar `cds add` con cds-dk 10.2.1, sin tocar (el real
+lleva además dos comentarios junto a `srv-api`, omitidos aquí):
 
 ```yaml
 _schema-version: 3.3.0
@@ -163,7 +268,7 @@ resources:
 > bindings. `provides`/`~{}` → una app le pasa su URL a otra. Con esas cuatro
 > ideas se lee cualquier `mta.yaml`.
 
-## 11.3 El approuter
+## 11.4 El approuter
 
 El approuter es una app Node.js de SAP que hace de puerta de entrada:
 
@@ -215,7 +320,7 @@ responde 401 si tiene `@requires`.
 }
 ```
 
-## 11.4 Construir
+## 11.5 Construir
 
 ```bash
 mbt build
@@ -276,7 +381,7 @@ unzip -l mta_archives/bookshop_1.0.0.mtar
 > en el `package.json` del proyecto o comprueba las versiones del buildpack.
 > **Pendiente de validar** en el primer despliegue.
 
-## 11.5 Desplegar
+## 11.6 Desplegar
 
 ```bash
 cf login -a https://api.cf.us10-001.hana.ondemand.com
@@ -347,7 +452,7 @@ El atajo que hace todo lo anterior de una vez (build + deploy):
 cds up
 ```
 
-## 11.6 Comprobar
+## 11.7 Comprobar
 
 ```bash
 cf mtas
@@ -382,7 +487,7 @@ pasa por el login de SAP ID Service y añade `/odata/v4/catalog/Books`.
 Si abres directamente la URL de `bookshop-srv` sin token, CAP responde `401`
 (con `auth: xsuaa` en producción). Es correcto: el camino es por el approuter.
 
-## 11.7 Quitar la route pública de `srv`
+## 11.8 Quitar la route pública de `srv`
 
 Que `srv` tenga URL pública es cómodo para depurar y peligroso en producción.
 Para que solo sea alcanzable desde el approuter:
@@ -407,7 +512,7 @@ hay que combinarlo con una route interna (`*.apps.internal`) y una política de
 red (`cf add-network-policy`). Es un paso del capítulo 14; en dev se puede
 dejar la route pública con `@requires` protegiendo los servicios.
 
-## 11.8 Redesplegar y deshacer
+## 11.9 Redesplegar y deshacer
 
 ```bash
 # cambios de código: subir versión en mta.yaml o usar --version-rule
@@ -433,7 +538,7 @@ cf undeploy bookshop --delete-services --delete-service-keys -f
 > instancias (y los datos). Con él, borra el contenedor HDI y todo lo que
 > contiene. Elige a conciencia.
 
-## 11.9 Trampas
+## 11.10 Trampas
 
 > **Trampa.** Hacer `mbt build` sin `npm install` previo. `cds build` no
 > encuentra `@cap-js/hana` y no genera `gen/db`. El deployer sube vacío.
