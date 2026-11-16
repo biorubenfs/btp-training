@@ -571,40 +571,103 @@ responde 401 si tiene `@requires`.
 mbt build
 ```
 
+Salida real del 16 de noviembre, recortada donde se indica:
+
 ```
-[2026-11-14 18:00:01]  INFO Cloud MTA Build Tool version 1.2.51
-[2026-11-14 18:00:01]  INFO generating the "Makefile_20261114180001.mta" file...
-[2026-11-14 18:00:01]  INFO done
-[2026-11-14 18:00:01]  INFO executing the "make -f Makefile_20261114180001.mta p=cf mtar= strict=true mode=" command...
-[2026-11-14 18:00:01]  INFO validating the MTA project
-[2026-11-14 18:00:01]  INFO running the "before-all" build...
-[2026-11-14 18:00:01]  INFO executing the "npm ci" command...
-...
-[2026-11-14 18:00:20]  INFO executing the "npx cds build --production" command...
-building project with { versions: { cds: '10.2.2', compiler: '7.2.1', dk: '10.2.1' }, target: 'gen', tasks: [
-    { src: 'db',  for: 'hana',   ... },
-    { src: 'srv', for: 'nodejs', ... } ] }
-done > wrote output to:
+[2026-11-16 22:45:46]  INFO Cloud MTA Build Tool version 1.2.51
+[2026-11-16 22:45:46]  INFO generating the "Makefile_20261116224546.mta" file...
+[2026-11-16 22:45:46]  INFO executing the "make -f Makefile_20261116224546.mta p=cf mtar= strict=true mode=" command...
+[2026-11-16 22:45:46]  INFO validating the MTA project
+[2026-11-16 22:45:46]  INFO running the "before-all" build...
+[2026-11-16 22:45:46]  INFO executing the "npm ci" command...
+added 96 packages, and audited 211 packages in 3s
+[2026-11-16 22:45:49]  INFO executing the "npx cds build --production" command...
+building project with {
+  versions: { cds: '10.2.2', compiler: '7.2.1', dk: '10.2.1' },
+  target: 'gen',
+  tasks: [
+    { src: '.',   for: 'typescript', options: { model: [ 'db', 'srv', 'app', 'app/*', '@sap/cds/srv/outbox', '.' ] } },
+    { src: 'db',  for: 'hana',       options: { model: [ 'db', 'srv', 'app', 'app/*', '@sap/cds/srv/outbox' ] } },
+    { src: 'srv', for: 'nodejs',     options: { model: [ 'db', 'srv', 'app', 'app/*', '@sap/cds/srv/outbox' ] } }
+  ]
+}
+...done > wrote output to:
    gen/db/package.json
    gen/db/src/gen/.hdiconfig
    gen/db/src/gen/.hdinamespace
-   gen/db/src/gen/CatalogService.Books.hdbtable
-   gen/db/src/gen/data/CatalogService.Books.csv
-   gen/db/src/gen/data/CatalogService.Books.hdbtabledata
+   gen/db/src/gen/CatalogService.Authors.hdbview
+   gen/db/src/gen/CatalogService.Books.hdbview
+   gen/db/src/gen/cds.outbox.Messages.hdbtable
+   gen/db/src/gen/data/sap.capire.bookshop-Authors.csv
+   gen/db/src/gen/data/sap.capire.bookshop-Authors.hdbtabledata
+   gen/db/src/gen/data/sap.capire.bookshop-Books.csv
+   gen/db/src/gen/data/sap.capire.bookshop-Books.hdbtabledata
+   gen/db/src/gen/sap.capire.bookshop.Authors.hdbtable
+   gen/db/src/gen/sap.capire.bookshop.Books.hdbtable
    gen/db/undeploy.json
+   gen/srv/package-lock.json
    gen/srv/package.json
-   gen/srv/srv/csn.json
-   gen/srv/srv/odata/v4/CatalogService.xml
-[2026-11-14 18:00:25]  INFO building the "bookshop-srv" module...
-[2026-11-14 18:00:40]  INFO building the "bookshop-db-deployer" module...
-[2026-11-14 18:00:45]  INFO building the "bookshop" module...
-[2026-11-14 18:00:55]  INFO generating the MTA archive...
-[2026-11-14 18:00:56]  INFO the MTA archive generated at: mta_archives/bookshop_1.0.0.mtar
+   gen/srv/srv/_i18n/i18n.json
+   gen/srv/srv/_i18n/messages.properties
+   ... 26 more. Run with DEBUG=build to show all files.
+
+build completed in 3321 ms
+[2026-11-16 22:45:53]  INFO building the "bookshop-srv" module...
+[2026-11-16 22:45:53]  INFO executing the "npm clean-install --production" command...
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'bookshop@1.0.0',
+npm warn EBADENGINE   required: { node: '^24' },
+npm warn EBADENGINE   current: { node: 'v22.22.0', npm: '10.9.4' }
+npm warn EBADENGINE }
+added 76 packages, and audited 77 packages in 822ms
+[2026-11-16 22:45:55]  INFO finished building the "bookshop-srv" module
+[2026-11-16 22:45:55]  INFO building the "bookshop-db-deployer" module...
+[2026-11-16 22:45:55]  INFO executing the "npm install --production" command...
+added 29 packages, and audited 30 packages in 3s
+[2026-11-16 22:45:58]  INFO finished building the "bookshop-db-deployer" module...
+[2026-11-16 22:45:58]  INFO building the "bookshop" module...
+[2026-11-16 22:45:58]  INFO executing the "npm install --production" command...
+added 194 packages, and audited 195 packages in 6s
+[2026-11-16 22:46:06]  INFO finished building the "bookshop" module
+[2026-11-16 22:46:06]  INFO generating the "META-INF/mtad.yaml" file...
+[2026-11-16 22:46:06]  INFO the MTA archive generated at: .../bookshop-cap/mta_archives/bookshop_1.0.0.mtar
+[2026-11-16 22:46:06]  INFO cleaning temporary files...
 ```
 
-> **Pendiente de validar.** Salida reconstruida; se sustituirá por la real.
-> El bloque `for: 'hana'` solo aparece si `@cap-js/hana` está instalado en
-> `node_modules` (`npm install` antes de `mbt build`).
+Qué está pasando, por fases:
+
+| Fase                              | Qué hace                                                                                                            |
+|-----------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `before-all`: `npm ci`            | Instala en la raíz según el `package-lock.json`. Por eso `cds add` sin `npm install` rompe aquí                     |
+| `before-all`: `cds build --production` | Tres tareas: `typescript` compila `srv/*.ts` con `tsconfig.cdsbuild.json`; `hana` escribe `gen/db`; `nodejs` escribe `gen/srv` |
+| Módulo `bookshop-srv`             | `npm clean-install --production` **dentro de `gen/srv`**: instala solo `dependencies` (sin `tsx`, sin `typescript`) y lo empaqueta |
+| Módulo `bookshop-db-deployer`     | Lo mismo en `gen/db`: `@sap/hdi-deploy` y el driver `hdb`                                                          |
+| Módulo `bookshop`                 | Lo mismo en `.deploy/app-router`: `@sap/approuter` con sus 194 paquetes. Deja un `package-lock.json` ahí, que va a git |
+| `mtad.yaml`                       | El `mta.yaml` "resuelto" para el deploy service                                                                     |
+
+Lo que hay en `gen/db` merece una mirada, porque es la traducción del
+modelo CDS a objetos de HANA:
+
+| Fichero                                   | Qué es                                                                                     |
+|-------------------------------------------|--------------------------------------------------------------------------------------------|
+| `sap.capire.bookshop.Books.hdbtable`      | Una entidad de `db/schema.cds` → una **tabla**                                             |
+| `CatalogService.Books.hdbview`            | Una proyección del servicio → una **vista** sobre la tabla. El servicio no lee tablas, lee vistas |
+| `cds.outbox.Messages.hdbtable`            | Tabla del *outbox* de CAP (mensajería asíncrona). No la has pedido; viene con el runtime     |
+| `data/sap.capire.bookshop-Books.csv` + `.hdbtabledata` | Los CSV iniciales y la instrucción de carga para HDI                            |
+| `.hdiconfig`, `.hdinamespace`             | Qué plugin de HDI trata cada extensión; el prefijo de nombres                               |
+| `undeploy.json`                           | Qué objetos puede borrar HDI si desaparecen del modelo                                      |
+
+Y en `gen/srv`, la comprobación que importa en un proyecto TypeScript:
+
+```
+gen/srv/srv/cat-service.js        ← el handler compilado (gracias a tsconfig.cdsbuild.json)
+gen/srv/srv/csn.json              ← el modelo compilado que lee CAP en runtime
+gen/srv/srv/odata/v4/CatalogService.xml
+gen/srv/@cds-models/...           ← los tipos de cds-typer, compilados a .js
+```
+
+Si `cat-service.js` no está, la app arrancará sin tu lógica y nadie avisará.
+Es la trampa 2 del capítulo 10.
 
 El `.mtar` es un zip. Mirar dentro es un buen ejercicio:
 
@@ -613,18 +676,28 @@ unzip -l mta_archives/bookshop_1.0.0.mtar
 ```
 
 ```
-  META-INF/MANIFEST.MF        qué módulo es cada zip interior
-  META-INF/mtad.yaml          el mta.yaml "resuelto" que lee el deploy service
-  bookshop-srv/data.zip       gen/srv con node_modules
-  bookshop-db-deployer/data.zip
-  bookshop/data.zip
+  Length      Name
+      472  META-INF/MANIFEST.MF          qué módulo es cada zip interior
+     1648  META-INF/mtad.yaml            el mta.yaml "resuelto" que lee el deploy service
+  7190206  bookshop/data.zip             .deploy/app-router con node_modules
+  2504988  bookshop-db-deployer/data.zip gen/db con node_modules
+  3861664  bookshop-srv/data.zip         gen/srv con node_modules
+       63  xs-security.json              el path del recurso bookshop-auth, copiado
 ```
 
-> **Trampa.** `gen/srv/package.json` lleva `engines.node`. Si pide una versión
-> que el buildpack de la región no tiene (cds-dk 10 escribe `^24`), el staging
-> falla con *no match found for node version*. Fija `"engines": {"node": "^22"}`
-> en el `package.json` del proyecto o comprueba las versiones del buildpack.
-> **Pendiente de validar** en el primer despliegue.
+El `mtad.yaml` es casi igual al `mta.yaml`, con dos diferencias que
+explican lo que son los tipos "bonitos": `type: nodejs` se ha convertido en
+`javascript.nodejs` y `type: hdb` en `com.sap.xs.hdi`. Los nombres cortos
+son alias que `mbt` traduce a los que entiende el deploy service.
+
+> **Trampa.** `cds build` escribe `"engines": { "node": "^24" }` en
+> `gen/srv/package.json` y `gen/db/package.json` aunque el `package.json`
+> del proyecto no tenga `engines`. De ahí el aviso `EBADENGINE` si tu Node
+> local es 22: es inofensivo en el build, pero en el staging el buildpack
+> de la región tiene que tener un Node 24 o fallará con *no match found for
+> node version*. En `us10` el `nodejs_buildpack` 1.9.7 lo trae. Si en otra
+> región no, pon `"engines": {"node": "^22"}` en el `package.json` del
+> proyecto: `cds build` respeta el valor si existe.
 
 ## 11.6 Desplegar
 
