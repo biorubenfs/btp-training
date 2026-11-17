@@ -88,6 +88,7 @@ equivalente. Para consultar, no para leer de principio a fin.
 |------------------------------------------|----------------------------------------------------------------|
 | Proyecto nuevo                           | `cds init <nombre> --add nodejs,tiny-sample && cd <nombre> && npm i` |
 | Arrancar en local                        | `cds watch`                                                    |
+| Base local persistente (SQLite en fichero) | `[development]` → `db.sqlite` en `cds.requires` + `cds deploy --to sqlite:db.sqlite` (10.6) |
 | Preparar para BTP                        | `cds add hana,xsuaa,approuter,mta && npm i`                    |
 | Ver configuración efectiva en producción | `cds env requires --profile production`                        |
 | Construir                                | `mbt build`                                                    |

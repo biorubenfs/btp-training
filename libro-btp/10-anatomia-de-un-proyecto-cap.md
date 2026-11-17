@@ -485,6 +485,68 @@ cds env requires.db --profile production  # qué usará en la nube
 > configuración. Muestra la configuración efectiva tras mezclar valores por
 > defecto, `package.json`, `.cdsrc.json`, perfiles y variables de entorno.
 
+### Utilidad: SQLite en fichero, con datos que sobreviven a los reinicios
+
+Con la configuración por defecto, la base de datos local vive **dentro del
+proceso de Node**, en memoria. Cada arranque crea una base vacía y la rellena
+con los CSV. Eso tiene tres consecuencias que sorprenden la primera vez:
+
+| Lo que ves                                              | Por qué                                                                 |
+|---------------------------------------------------------|-------------------------------------------------------------------------|
+| Un libro creado por POST no aparece en el CSV           | El CSV es la semilla: se lee al arrancar y nunca se escribe             |
+| Ese libro desaparece al reiniciar (o al guardar un fichero con `cds watch`) | La base en memoria se tira y se recrea desde los CSV |
+| Todos los libros tienen `createdAt` de hace un momento  | El CSV no trae esas columnas; `managed` las rellena al insertar cada arranque |
+
+Y una cuarta: no hay fichero ni puerto, así que **ningún cliente externo**
+(DBeaver, SQLite Viewer) puede abrirla.
+
+La solución es apuntar el perfil `development` a un fichero:
+
+```json
+"cds": {
+  "requires": {
+    "[production]": { "auth": "xsuaa" },
+    "[development]": {
+      "db": { "kind": "sqlite", "credentials": { "url": "db.sqlite" } }
+    }
+  }
+}
+```
+
+```bash
+npx cds deploy --to sqlite:db.sqlite   # crea las tablas y carga los CSV
+echo 'db.sqlite*' >> .gitignore        # datos locales, fuera del repo
+cds env requires.db                    # debe decir url: 'db.sqlite'
+```
+
+> **Trampa.** `cds deploy --to sqlite:db.sqlite` crea el fichero pero en
+> cds-dk 10.2.1 **no toca `package.json`**. Sin el bloque `[development]`,
+> el servidor sigue usando la memoria y el fichero queda huérfano.
+
+Con el fichero, el arranque ya no recarga los CSV (desaparece la línea
+`init from db/data/...` del log): lo creado por POST sigue ahí tras parar y
+arrancar, también con `cds-tsx watch`. Comprobado en bookshop. En DBeaver
+basta una conexión de tipo SQLite con la ruta al fichero, sin usuario. Verás
+la tabla real `sap_capire_bookshop_Books` y una vista por servicio que la
+expone (`CatalogService_Books`, `AdminService_Books`), igual que en el
+contenedor HDI.
+
+| Quiero…                                   | Haz                                                    |
+|-------------------------------------------|--------------------------------------------------------|
+| Volver a los datos de los CSV             | `npx cds deploy --to sqlite:db.sqlite` (borra lo tuyo) |
+| Aplicar un cambio del modelo (`.cds`)     | Lo mismo: el fichero no se actualiza solo              |
+| Volver a la memoria                       | Quita el bloque `[development]`                        |
+
+> **Trampa.** Añadir un campo al modelo y no redesplegar el fichero. El
+> servidor arranca sin quejarse, pero la primera lectura falla con
+> `no such column: ... isbn`: la tabla del fichero es la vieja. Repite
+> `cds deploy`, sabiendo que recarga los CSV y pierdes lo creado a mano.
+
+> **Para un dev CAP.** En HANA pasa algo parecido: el deployer carga los CSV
+> **en cada despliegue**, no al arrancar `srv`. Lo creado por POST persiste
+> entre reinicios, pero un redespliegue puede pisar las filas de las tablas
+> que tienen CSV.
+
 ## 10.7 De fichero a cockpit
 
 La tabla que resume el capítulo y anticipa el siguiente:
