@@ -22,6 +22,7 @@ reproducir el camino.
 | 2026-11-16 | 7         | DBeaver conectado al contenedor `bookshop-db` con la misma key (`ngdbc` 2.30.12, puerto 443, SSL). Primer intento falló por cerrar la ventana de descarga del driver |
 | 2026-11-17 | 8, 10     | Carpeta `http` en bookshop con peticiones para REST Client: `local.http` y `cloud.http` (token de XSUAA por client credentials con la key `rest-client-key` de `bookshop-auth`, probado por el usuario contra `srv`). `AdminService` en `/admin` sin `@requires`, POST de un libro probado en local con 201. Comprobado que proyectar sobre `CatalogService.Books` hereda `@readonly`: corregido el ejemplo del capítulo 8 |
 | 2026-11-17 | 10        | Bookshop pasa a `db.sqlite` en el perfil `development` (commit en `bookshop-cap`). Comprobado que `cds deploy --to sqlite:` no toca `package.json`, que con fichero el arranque no recarga los CSV y los POST sobreviven al reinicio, y que un campo nuevo sin redesplegar da `no such column`. `cds deploy` a SQLite borra y recrea siempre, también con `schema_evolution: "auto"`; a HANA migra conservando datos. Sección nueva en 10.6 |
+| 2026-11-18 | 4, 11     | El cockpit avisa en las apps de bookshop: "La pila cflinuxfs4 de Cloud Foundry ha quedado deprecated. Cambie la pila a cflinuxfs5". El stack es el sistema de ficheros raíz del contenedor (`cflinuxfs4` = Ubuntu 22.04, `cflinuxfs5` = Ubuntu 24.04), debajo del buildpack. La opción "migrar" del cockpit hace un restage: vuelve a pasar el package guardado por el buildpack sobre el stack nuevo, sin tocar el repo. Lo que haga el siguiente deploy depende del descriptor: con `stack: cflinuxfs4` se deshace la migración; sin `stack` (caso del `mta.yaml` de bookshop) una app existente debería conservar el suyo, pero una app nueva (blue-green, módulo renombrado) coge el stack por defecto del landscape. Recomendación: fijar `parameters: stack: cflinuxfs5` por módulo. Sin probar todavía (ver pendiente 8) |
 | 2026-11-15 | 7         | Mapping (org + space `dev`) y *Allow all IPs* confirmados. Contenedor de prueba `test-hdi` (`hana`/`hdi-shared`) creado por CLI, borrado y recreado desde el cockpit, con key. Esquemas reales consultados en `SYS.SCHEMAS` como `DBADMIN`: cinco por contenedor (datos, `#DI`, `#OO`, `_DT`, `_RT`), `HAS_PRIVILEGES=FALSE`. Capítulo 7.5 y 7.8 corregidos con ello |
 
 ## Pendiente
@@ -35,6 +36,7 @@ Por orden del curso:
 5. Modo híbrido y tests contra HANA (capítulo 12).
 6. Romper y diagnosticar (capítulo 13).
 7. Space `prod`, `.mtaext`, `btp` CLI (capítulo 14). Antes, ampliar el mapping de HANA a `prod`.
+8. Stack `cflinuxfs5`: migrar las apps de bookshop desde el cockpit y hacer un `cf deploy` nuevo con el `mta.yaml` actual (sin `stack`), para ver si vuelve a salir el warning de `cflinuxfs4`. Comprobar el stack de cada app con `cf app <nombre>` antes y después. Si vuelve, añadir `parameters: stack: cflinuxfs5` a los módulos y redesplegar.
 
 ## Estado del entorno
 
