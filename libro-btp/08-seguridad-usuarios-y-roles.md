@@ -121,13 +121,19 @@ reproducible.
 
 ```cds
 // srv/admin-service.cds
-using { CatalogService } from './cat-service';
+using { sap.capire.bookshop as my } from '../db/schema';
 
 @requires: 'Admin'
-service AdminService {
-  entity Books as projection on CatalogService.Books;
+service AdminService @(path: '/admin') {
+  entity Books   as projection on my.Books;
+  entity Authors as projection on my.Authors;
 }
 ```
+
+> **Trampa.** No proyectes sobre `CatalogService.Books`. Las anotaciones se
+> heredan en la proyección y `AdminService.Books` saldría `@readonly`: todo
+> POST daría 405. Proyecta sobre las entidades de `db`. Comprobado con
+> `cds compile` sobre bookshop.
 
 | Anotación                        | Efecto                                                                  |
 |----------------------------------|-------------------------------------------------------------------------|
