@@ -542,10 +542,20 @@ contenedor HDI.
 > `no such column: ... isbn`: la tabla del fichero es la vieja. Repite
 > `cds deploy`, sabiendo que recarga los CSV y pierdes lo creado a mano.
 
-> **Para un dev CAP.** En HANA pasa algo parecido: el deployer carga los CSV
-> **en cada despliegue**, no al arrancar `srv`. Lo creado por POST persiste
-> entre reinicios, pero un redespliegue puede pisar las filas de las tablas
-> que tienen CSV.
+> **Para un dev CAP.** `cds deploy` no hace lo mismo con SQLite que con
+> HANA. Contra HANA (`cds deploy --to hana`, o el deployer en un `cf deploy`)
+> actúa el HDI deployer: compara el modelo nuevo con el desplegado y migra
+> las tablas **conservando los datos**; solo se pierde lo que quitas del
+> modelo (una columna, una entidad). Contra SQLite borra las tablas y las
+> crea de cero, cambie o no el modelo. Comprobado en bookshop: una fila
+> creada a mano desaparece y un valor cambiado vuelve al del CSV, incluso con
+> `schema_evolution: "auto"` en la configuración, que en cds-dk 10.2.1 no
+> tiene efecto con SQLite.
+>
+> Lo que sí comparten: los CSV se cargan en cada deploy, no al arrancar
+> `srv`. En HANA, las filas que vienen del CSV vuelven a sus valores en cada
+> despliegue; las creadas por POST con otras claves se quedan (pendiente de
+> validar en el trial).
 
 ## 10.7 De fichero a cockpit
 
