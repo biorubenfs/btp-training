@@ -13,7 +13,8 @@ estándar. Cuando le entregas una aplicación, hace siempre lo mismo:
    cf push / cf deploy
           │
           ▼
-  1. SUBIDA     tu código (o el .mtar) llega al Cloud Controller
+  1. SUBIDA     tu código (o el .mtar) llega al Cloud Controller, que
+                lo guarda tal cual: el PACKAGE
           │
           ▼
   2. STAGING    elige un BUILDPACK (nodejs_buildpack para CAP), instala
@@ -32,11 +33,12 @@ estándar. Cuando le entregas una aplicación, hace siempre lo mismo:
 | Término   | Qué es                                                                              |
 |-----------|-------------------------------------------------------------------------------------|
 | Buildpack | La receta que convierte tu código en algo ejecutable. Detecta `package.json` → Node |
+| Package   | Los ficheros que subiste, tal cual. CF lo guarda y puede volver a construir a partir de él |
 | Droplet   | El resultado del staging: código + dependencias + runtime, listo para arrancar       |
 | Instancia (de app) | Un contenedor corriendo el droplet. `cf scale -i 3` → tres copias           |
 | Route     | URL pública mapeada a la app. Una app sin route no es accesible desde fuera          |
 | Health check | Comprobación periódica. Por defecto, que la app escuche en el puerto `PORT`       |
-| Stack     | El sistema operativo base del contenedor (`cflinuxfs4`)                             |
+| Stack     | El sistema operativo base del contenedor, debajo del buildpack (`cflinuxfs4`, `cflinuxfs5`). Ver 4.3 |
 
 > **Analogía.** Cloud Foundry es a BTP lo que Heroku a AWS. Haces `cf deploy`
 > y te olvidas de servidores, sistemas operativos y balanceadores. Buildpack =
@@ -146,7 +148,7 @@ memory usage:    256M
 
 Aquí ves de un vistazo: estado, cuántas instancias hay vivas, cuánta memoria
 consume frente a la asignada (si está cerca del límite, los reinicios por
-memoria están al caer) y qué buildpack se usó.
+memoria están al caer), qué buildpack se usó y sobre qué stack corre.
 
 ### Logs
 
@@ -240,7 +242,67 @@ Cuándo usar cada uno:
 | Nada, solo quiero que arranque de cero       | `restart`    |
 | He cambiado una variable con `cf set-env`    | `restart`    |
 | He hecho `cf bind-service` o `unbind-service`| `restage`    |
+| He cambiado el stack de la app               | `restage` (el cockpit lo hace solo al migrar) |
 | He subido código nuevo                       | `cf push` / `cf deploy` lo hacen solos |
+
+### Package, droplet y stack: el aviso de `cflinuxfs4`
+
+En noviembre de 2026 el cockpit empezó a mostrar este aviso en las apps de
+bookshop:
+
+```
+La pila cflinuxfs4 de Cloud Foundry ha quedado deprecated. Cambie la pila a cflinuxfs5
+```
+
+"Pila" es la traducción de *stack*. Para entender el aviso, y lo que hace el
+botón de migrar que lo acompaña, hay que ver la app como tres capas:
+
+```
+  ┌────────────────────────────────────────┐
+  │ tu app            (el package: gen/srv)│
+  ├────────────────────────────────────────┤
+  │ buildpack         nodejs_buildpack:    │   staging = buildpack + package
+  │                   Node 24, npm ci…     │   sobre un stack → DROPLET
+  ├────────────────────────────────────────┤
+  │ stack             cflinuxfs4 / 5:      │
+  │                   libc, OpenSSL, certs │
+  └────────────────────────────────────────┘
+```
+
+| Stack        | Basado en            | Estado (noviembre 2026)        |
+|--------------|----------------------|--------------------------------|
+| `cflinuxfs3` | Ubuntu 18.04         | Retirado                       |
+| `cflinuxfs4` | Ubuntu 22.04 (Jammy) | Deprecated                     |
+| `cflinuxfs5` | Ubuntu 24.04 (Noble) | El nuevo                       |
+
+Un stack vive lo que dura el soporte de su Ubuntu. Cuando se acerca el
+final, la plataforma lo marca *deprecated*, más tarde deja de aceptar
+despliegues nuevos con él y al final lo retira. Las fechas están en las
+notas de versión de SAP BTP. Mientras está *deprecated*, la app sigue
+funcionando igual.
+
+Lo importante es que **CF guarda dos cosas por app**: el package (lo que
+subiste) y el droplet (lo que se ejecuta). Por eso el cockpit puede migrar
+una app de stack sin tener tu repositorio. Migrar es un restage: coge el
+package guardado, vuelve a pasar el buildpack sobre `cflinuxfs5`, genera un
+droplet nuevo y reinicia la app. Tu código no cambia.
+
+```bash
+cf stacks                  # stacks disponibles en el landscape
+cf app bookshop-srv        # la línea "stack:" dice cuál usa la app
+```
+
+> **Para un dev CAP.** Una app CAP en Node casi nunca nota el cambio: el
+> `nodejs_buildpack` existe para los dos stacks y tu código no depende de la
+> versión de Ubuntu. Lo que puede romperse son dependencias con **binarios
+> nativos** compilados contra las librerías del sistema. Por eso el cockpit
+> pide comprobar antes que el buildpack y la versión de Node estén
+> soportados en el stack nuevo.
+
+> **Trampa.** Lo que cambias a mano en el cockpit vive en la app desplegada,
+> no en tu repositorio. El siguiente `cf deploy` puede deshacerlo si el
+> `mta.yaml` dice otra cosa. Para el stack, la solución es fijarlo en el
+> descriptor (capítulo 11, sección 11.10).
 
 ### Entrar en el contenedor
 
@@ -339,7 +401,10 @@ cf set-org-role compañero@empresa.com 7b6c2113trial OrgManager
   entorno → route. Si no responde, *Crashed* y reinicio.
 - Los cinco comandos del día a día: `cf apps`, `cf services`, `cf app X`,
   `cf logs X --recent`, `cf env X`.
-- `restart` para variables, `restage` para bindings.
+- `restart` para variables, `restage` para bindings y cambios de stack.
+- CF guarda el package (lo que subiste) y el droplet (lo que corre). El
+  stack es el Ubuntu de debajo: `cflinuxfs4` está deprecated, el nuevo es
+  `cflinuxfs5`.
 - Roles de CF (Space Developer) ≠ role collections de BTP. Hacen falta los dos.
 - `[APP/PROC/WEB/0]` son tus logs; `[CELL/0]` es la plataforma hablando de tu
   contenedor.

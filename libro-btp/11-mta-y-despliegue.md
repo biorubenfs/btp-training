@@ -963,6 +963,37 @@ cf undeploy bookshop --delete-services --delete-service-keys -f
 > `bookshop-auth` por un conflicto. Lee el error: suele ser un scope eliminado
 > que un rol aún referencia.
 
+> **Trampa.** Migrar una app de stack desde el cockpit (sección 4.3) y que el
+> siguiente `cf deploy` la devuelva al anterior. El `mta.yaml` de bookshop no
+> dice qué stack usar, así que decide la plataforma:
+>
+> | El módulo en `mta.yaml`  | Stack tras el siguiente deploy                                  |
+> |--------------------------|-----------------------------------------------------------------|
+> | `stack: cflinuxfs5`      | `cflinuxfs5`                                                    |
+> | `stack: cflinuxfs4`      | `cflinuxfs4`: la migración del cockpit se deshace               |
+> | Sin `stack`              | Si se actualiza la app existente, normalmente conserva el suyo. Si se crea una app nueva (blue-green, módulo renombrado), coge el stack por defecto del landscape |
+>
+> Fíjalo por módulo, en `parameters`, para que el repositorio sea la fuente
+> de verdad:
+>
+> ```yaml
+>   - name: bookshop-srv
+>     type: nodejs
+>     path: gen/srv
+>     parameters:
+>       instances: 1
+>       buildpack: nodejs_buildpack
+>       stack: cflinuxfs5
+> ```
+>
+> Lo mismo en el approuter. El deployer (`type: hdb`) también es una app de
+> CF, aunque esté parada.
+
+> **Pendiente de validar.** El comportamiento sin `stack` está deducido, no
+> probado. Prueba pendiente (diario, punto 8): migrar desde el cockpit, hacer
+> un `cf deploy` con el `mta.yaml` actual y comprobar con `cf app` si vuelve
+> el aviso.
+
 ## Para recordar
 
 - `mta.yaml`: `modules` → apps, `resources` → instancias, `requires` →

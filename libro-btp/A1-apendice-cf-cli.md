@@ -25,10 +25,11 @@ que se usan a diario. Los del plugin `multiapps` van al final.
 | Comando                                      | Qué hace                                                       |
 |----------------------------------------------|----------------------------------------------------------------|
 | ★ `cf apps`                                  | Lista apps del space con estado, instancias y routes           |
-| ★ `cf app <app>`                             | Detalle: estado por instancia, CPU, memoria, disco, buildpack  |
+| ★ `cf app <app>`                             | Detalle: estado por instancia, CPU, memoria, disco, buildpack, stack |
+| `cf stacks`                                  | Stacks disponibles en el landscape (`cflinuxfs4`, `cflinuxfs5`) |
 | `cf push <app> [-p <ruta>] [-m 256M] [-i 1]` | Despliega una app suelta (sin MTA)                             |
 | ★ `cf start` / `cf stop` / `cf restart <app>`| Ciclo de vida. `restart` recoge variables de entorno nuevas    |
-| ★ `cf restage <app>`                         | Vuelve a pasar el buildpack. **Necesario tras cambiar bindings** |
+| ★ `cf restage <app>`                         | Vuelve a pasar el buildpack sobre el package guardado. **Necesario tras cambiar bindings** |
 | `cf scale <app> -i 2 -m 512M -k 1G`          | Instancias, memoria, disco                                     |
 | `cf delete <app> [-r]`                       | Borra la app (`-r` borra también sus routes)                   |
 | `cf rename <app> <nuevo>`                    | Renombra                                                       |

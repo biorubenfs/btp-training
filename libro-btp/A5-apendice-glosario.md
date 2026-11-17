@@ -38,9 +38,11 @@
 | `.mtaext`               | Extension descriptor: sobrescribe parámetros del `mta.yaml` por entorno                                      | 14       |
 | `mbt`                   | Cloud MTA Build Tool: construye el `.mtar`                                                                   | 11       |
 | Org                     | Contenedor de CF; una por subcuenta                                                                          | 2        |
+| Package                 | Los ficheros que se subieron a CF, guardados tal cual. Un restage parte de él                                | 4        |
 | Perfil (CAP)            | Conjunto de configuración por entorno: `development`, `hybrid`, `production`                                 | 10       |
 | Plan                    | Variante de un servicio: `lite`, `application`, `hdi-shared`                                                 | 5        |
 | Región                  | Centro de datos + proveedor donde vive una subcuenta (`eu10`, `us10`)                                        | 3        |
+| Restage                 | Repetir el staging sobre el package guardado: droplet nuevo. Tras bindings o cambio de stack                 | 4        |
 | Role collection         | Conjunto de roles que se asigna a usuarios o grupos. La unidad de asignación                                 | 8        |
 | Role template / Role    | Declarado en `xs-security.json`; se convierte en rol al desplegar la instancia XSUAA                         | 8        |
 | Route                   | URL pública asignada a una app de CF                                                                         | 4        |
@@ -49,6 +51,7 @@
 | Service key             | Credenciales de una instancia para usarla fuera de CF                                                        | 6        |
 | Space                   | Subdivisión de la org donde viven apps e instancias                                                          | 2        |
 | Space Developer         | Rol de CF necesario para desplegar en un space                                                               | 4, 8     |
+| Stack                   | Sistema operativo base del contenedor de CF, debajo del buildpack (`cflinuxfs4`, `cflinuxfs5`)               | 4        |
 | Staging                 | Fase en que el buildpack construye el droplet                                                                | 4        |
 | Subcuenta               | Unidad de aislamiento de BTP: región, usuarios, roles, servicios, entornos                                   | 2        |
 | Subdominio              | Identificador de la subcuenta que aparece en URLs y tokens (`7b6c2113trial`)                                 | 3        |
