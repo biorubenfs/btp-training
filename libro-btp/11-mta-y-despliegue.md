@@ -289,7 +289,7 @@ Los nombres son los que cds-dk deriva del `ID` de la MTA.
 | `bookshop-srv`         | Módulo (app)  | `gen/srv`: tu servicio CAP compilado, `csn.json`, `package.json` con las dependencias de runtime | El servidor Node que has estado viendo con `cds-tsx watch`, pero con HANA detrás y validando JWT. Expone `/catalog`. Corre siempre | `cf apps`, *started*                 |
 | `bookshop-db-deployer` | Módulo (app)  | `gen/db`: los `.hdbtable`, los CSV y un `package.json` con `@sap/hdi-deploy`                     | Arranca, conecta al contenedor HDI, crea o actualiza las tablas, carga los CSV y **termina**. Es el equivalente a ejecutar las migraciones | `cf apps`, *stopped*, 0/1 instancias |
 | `bookshop`             | Módulo (app)  | `.deploy/app-router`: el approuter de SAP, `xs-app.json` con las rutas                          | La puerta de entrada: redirige al login de XSUAA, guarda la sesión y reenvía cada petición a `srv` con el token. Es la única URL que das a un usuario | `cf apps`, *started*, con route      |
-| `bookshop-auth`        | Recurso (instancia) | Una instancia de `xsuaa`, plan `application`, creada con `xs-security.json`                | El servidor de identidad de la app: emite los JWT y conoce sus scopes y roles. No ejecuta tu código; es un servicio gestionado por SAP | `cf services`, *Instancias y suscripciones* |
+| `bookshop-auth`        | Recurso (instancia) | Una instancia de `xsuaa`, plan `application`, creada con `xs-security.json`                | El servidor de tokens de la app: emite los JWT y conoce sus scopes y roles. No comprueba contraseñas, eso lo hace el proveedor de identidad (capítulo 8.2). No ejecuta tu código; es un servicio gestionado por SAP | `cf services`, *Instancias y suscripciones* |
 | `bookshop-db`          | Recurso (instancia) | Una instancia de `hana`, plan `hdi-shared`: un contenedor HDI como `test-hdi` del capítulo 7 | El esquema de bookshop dentro de `hana-trial`, con sus usuarios técnicos. Tampoco ejecuta código: es un sitio donde guardar tablas | `cf services`, Database Explorer     |
 
 En ejecución quedan así. El deployer ya ha terminado y no está; lo que corre
@@ -520,7 +520,8 @@ Dos matices:
 
 - En local llamas a `srv` en `localhost:4004` sin token porque la auth es
   `mocked`. En BTP, con `auth: xsuaa`, la misma llamada sin token devuelve
-  **401**.
+  **401**, aunque el servicio no tenga `@requires`: en producción CAP exige
+  estar autenticado por defecto (capítulo 8.8).
 - Si quitas la route pública de `srv` (11.8), los programas entran también
   por el approuter: acepta un `Authorization: Bearer` que ya venga puesto y
   lo reenvía sin pedir login.
@@ -552,9 +553,11 @@ Lo que hay en `.deploy/app-router/`:
 
 La `destination: srv-api` no es una destination de la subcuenta: es la que el
 `mta.yaml` inyectó como variable de entorno `destinations` del approuter con
-la URL de `srv`. Para exigir login en todo, añade `"authenticationType": "xsuaa"`
-a la ruta; sin ello, el approuter pasa las peticiones anónimas y `srv`
-responde 401 si tiene `@requires`.
+la URL de `srv`. La ruta no dice `"authenticationType"` y no le hace falta:
+con una XSUAA ligada, el valor por defecto es `xsuaa`, y el approuter exige
+login en todas las rutas. Lo confirma la salida de 11.7: sin cookie, te
+manda a `/oauth/authorize`. Para dejar una ruta abierta (una página pública,
+por ejemplo) se pone `"authenticationType": "none"` en esa ruta.
 
 ```json
 // default-env.json: para probar el approuter en local contra cds watch
@@ -899,8 +902,34 @@ Service y añade `/catalog/Books`. Los libros con `stock > 100` llevan
 
 ## 11.8 Quitar la route pública de `srv`
 
-Que `srv` tenga URL pública es cómodo para depurar y peligroso en producción.
-Para que solo sea alcanzable desde el approuter:
+Una **route** es una URL pública asignada a una app. Todas las peticiones a
+`*.cfapps.us10-001.hana.ondemand.com` llegan primero al router de la
+plataforma (el `[RTR]` de los logs), que mira el nombre, busca en su tabla
+a qué app corresponde y se la pasa. Quitar una route es borrar esa línea de
+la tabla: la app sigue arrancada, pero desde internet ya no se llega a ella.
+
+Hoy bookshop tiene dos puertas:
+
+```
+  Internet ──▶ …-dev-bookshop.cfapps…      ──▶ approuter ──┐
+                                                           ├──▶ bookshop-srv
+  Internet ──▶ …-dev-bookshop-srv.cfapps…  ────────────────┘
+```
+
+Las dos están protegidas, porque `srv` exige un JWT (capítulo 8.11). Pero la
+segunda queda expuesta a internet: si algún día un servicio se queda sin
+`@requires` o hay un error de configuración, el agujero es público. Quitar
+la route deja una sola puerta, el approuter. Es defensa en profundidad.
+
+**El coste.** El approuter llega hoy a `srv` por esa misma URL pública:
+`srv-url: ${default-url}` en el `provides` de `srv-api`. Quitarla sin más
+rompe también el approuter. Hacen falta tres cambios:
+
+1. Dar a `srv` una **route interna** (`*.apps.internal`), que solo existe
+   dentro de la red de Cloud Foundry.
+2. Permitir el tráfico del approuter a `srv` con una **política de red**,
+   porque por defecto las apps no se hablan por la red interna.
+3. Apuntar `srv-url` a la route interna, por HTTP y al puerto de la app.
 
 ```yaml
   - name: bookshop-srv
@@ -910,17 +939,31 @@ Para que solo sea alcanzable desde el approuter:
       instances: 1
       buildpack: nodejs_buildpack
       routes:
-        - route: ${default-url}
-          protocol: http1
-    # ... o, para quitarla del todo:
-    # parameters:
-    #   no-route: true
+        - route: bookshop-srv-${space}.apps.internal   # solo esta: desaparece la pública
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: http://bookshop-srv-${space}.apps.internal:8080
 ```
 
-Con `no-route: true` el approuter no podría alcanzarla por su URL, así que
-hay que combinarlo con una route interna (`*.apps.internal`) y una política de
-red (`cf add-network-policy`). Es un paso del capítulo 14; en dev se puede
-dejar la route pública con `@requires` protegiendo los servicios.
+```bash
+cf add-network-policy bookshop bookshop-srv --protocol tcp --port 8080
+```
+
+> **Pendiente de validar.** Sin probar en el trial. Se hará en el
+> capítulo 14, en el space `prod`. En particular: si el MTA acepta la route
+> interna así, si la política de red puede declararse en el `mta.yaml` en
+> lugar de crearla a mano, y el puerto real de la app.
+
+> **Trampa.** `parameters: routes: [{ route: ${default-url} }]` no quita
+> nada: declara de forma explícita la misma route pública que ya había. Y
+> `no-route: true` a secas deja a `srv` sin ninguna route, también sin la
+> interna, y el approuter deja de llegar a ella.
+
+En `dev` se deja la route pública: es cómoda para depurar con REST Client,
+y la protección la dan el JWT y los `@requires` del capítulo 8. Recuerda que
+bookshop todavía no tiene ninguno: hasta entonces, cualquier usuario
+autenticado puede usarla (capítulo 8.4).
 
 ## 11.9 Redesplegar y deshacer
 
